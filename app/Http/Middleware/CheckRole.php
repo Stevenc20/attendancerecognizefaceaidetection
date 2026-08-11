@@ -21,6 +21,12 @@ class CheckRole
             return redirect()->route('login');
         }
 
+        \Illuminate\Support\Facades\Log::info('CheckRole debugging:', [
+            'user_role' => $user->role,
+            'expected_roles' => $roles,
+            'url' => $request->url(),
+        ]);
+
         if (!in_array($user->role, $roles)) {
             abort(403, 'Unauthorized access to this section.');
         }

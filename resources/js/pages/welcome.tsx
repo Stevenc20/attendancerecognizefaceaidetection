@@ -7,15 +7,7 @@ import { ScrollTrigger } from 'gsap/ScrollTrigger';
 
 gsap.registerPlugin(ScrollTrigger);
 
-const MAJORS = [
-    { id: '01', title: 'RPL', desc: 'Rekayasa Perangkat Lunak', img: 'https://images.unsplash.com/photo-1555066931-4365d14bab8c?q=80&w=1000&auto=format&fit=crop' },
-    { id: '02', title: 'DKV', desc: 'Desain Komunikasi Visual', img: 'https://images.unsplash.com/photo-1626785774573-4b799315345d?q=80&w=1000&auto=format&fit=crop' },
-    { id: '03', title: 'TKJ', desc: 'Teknik Komputer Jaringan', img: 'https://images.unsplash.com/photo-1544197150-b99a580bb7a8?q=80&w=1000&auto=format&fit=crop' },
-    { id: '04', title: 'AKL', desc: 'Akuntansi Keuangan', img: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?q=80&w=1000&auto=format&fit=crop' },
-    { id: '05', title: 'MPLB', desc: 'Manajemen Perkantoran', img: 'https://images.unsplash.com/photo-1497215728101-856f4ea42174?q=80&w=1000&auto=format&fit=crop' }
-];
-
-export default function Welcome() {
+export default function Welcome({ majors }: { majors: Array<{ id: string; title: string; desc: string; img: string }> }) {
     const loaderRef = useRef<HTMLDivElement>(null);
     const logoRef = useRef<HTMLDivElement>(null);
     const heroTextRef = useRef<HTMLDivElement>(null);
@@ -206,7 +198,7 @@ export default function Welcome() {
         if (isLoading) return;
 
         const ctx = gsap.context(() => {
-            const numMajors = MAJORS.length;
+            const numMajors = majors.length;
             
             const galleryTl = gsap.timeline({
                 scrollTrigger: {
@@ -218,14 +210,14 @@ export default function Welcome() {
                 }
             });
 
-            MAJORS.forEach((major, i) => {
+            majors.forEach((major, i) => {
                 if (i !== 0) {
                     gsap.set(`.major-text-${i}`, { yPercent: 100, opacity: 0 });
                     gsap.set(`.major-img-${i}`, { clipPath: "inset(100% 0% 0% 0%)" });
                 }
             });
 
-            MAJORS.forEach((major, i) => {
+            majors.forEach((major, i) => {
                 if (i === 0) return;
 
                 galleryTl.to(`.major-text-${i-1}`, {
@@ -305,7 +297,7 @@ export default function Welcome() {
                 className={`fixed inset-0 z-[90] bg-[#0A0A0A]/95 backdrop-blur-2xl transition-all duration-500 flex flex-col items-center justify-center gap-6 ${isMobileMenuOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}
             >
                 <a href="#hero" onClick={(e) => { handleScrollTo(e, 'hero'); setIsMobileMenuOpen(false); }} className="text-white text-2xl md:text-3xl font-black uppercase tracking-widest hover:text-brand-red transition-colors">Home</a>
-                <a href="#majors" onClick={(e) => { handleScrollTo(e, 'majors'); setIsMobileMenuOpen(false); }} className="text-white text-2xl md:text-3xl font-black uppercase tracking-widest hover:text-brand-red transition-colors">Majors</a>
+                <a href="#majors" onClick={(e) => { handleScrollTo(e, 'majors'); setIsMobileMenuOpen(false); }} className="text-white text-2xl md:text-3xl font-black uppercase tracking-widest hover:text-brand-red transition-colors">majors</a>
                 <a href="#security" onClick={(e) => { handleScrollTo(e, 'security'); setIsMobileMenuOpen(false); }} className="text-white text-2xl md:text-3xl font-black uppercase tracking-widest hover:text-brand-red transition-colors">Security</a>
             </div>
 
@@ -321,7 +313,7 @@ export default function Welcome() {
                 <div className={`pointer-events-auto flex items-center gap-1 md:gap-2 p-1 md:p-1.5 rounded-full transition-all duration-500 ${isScrolled ? 'bg-[#0A0A0A]/80 backdrop-blur-xl border border-white/10 shadow-2xl' : 'bg-transparent border-transparent'}`}>
                     <div className={`hidden md:flex items-center gap-1 px-3 border-r pr-4 transition-colors duration-500 ${isScrolled ? 'border-white/10' : 'border-transparent'}`}>
                         <a href="#hero" onClick={(e) => handleScrollTo(e, 'hero')} className="text-white text-xs font-medium px-4 py-2 rounded-full hover:bg-white/10 transition-colors">Home</a>
-                        <a href="#majors" onClick={(e) => handleScrollTo(e, 'majors')} className="text-white/80 hover:text-white text-xs font-medium px-4 py-2 rounded-full hover:bg-white/10 transition-colors">Majors</a>
+                        <a href="#majors" onClick={(e) => handleScrollTo(e, 'majors')} className="text-white/80 hover:text-white text-xs font-medium px-4 py-2 rounded-full hover:bg-white/10 transition-colors">majors</a>
                         <a href="#security" onClick={(e) => handleScrollTo(e, 'security')} className="text-white/80 hover:text-white text-xs font-medium px-4 py-2 rounded-full hover:bg-white/10 transition-colors">Security</a>
                     </div>
 
@@ -420,13 +412,13 @@ export default function Welcome() {
                     
                     {/* Left: Text Content */}
                     <div ref={galleryLeftRef} className="w-full md:w-1/2 h-1/2 md:h-full relative flex items-center justify-center px-6 md:px-20 z-20 order-2 md:order-1 overflow-hidden">
-                        {MAJORS.map((major, i) => (
+                        {majors.map((major, i) => (
                             <div 
                                 key={major.id} 
                                 className={`absolute top-0 left-0 w-full h-full px-6 md:px-20 flex flex-col justify-center major-text-${i} ${i === 0 ? 'opacity-100' : 'opacity-0'}`}
                             >
                                 <span className="text-brand-red text-sm md:text-2xl font-bold tracking-[0.2em] md:tracking-[0.3em] mb-2 md:mb-4">
-                                    {major.id} / {MAJORS.length.toString().padStart(2, '0')}
+                                    {major.id} / {majors.length.toString().padStart(2, '0')}
                                 </span>
                                 <h2 className="text-5xl sm:text-6xl md:text-8xl lg:text-9xl font-black uppercase tracking-tighter leading-none mb-3 md:mb-6 text-brand-navy drop-shadow-sm">
                                     {major.title}
@@ -440,7 +432,7 @@ export default function Welcome() {
 
                     {/* Right: Images Stacking Up */}
                     <div ref={galleryRightRef} className="w-full md:w-1/2 h-1/2 md:h-full relative overflow-hidden z-10 bg-[#E5E5E5] order-1 md:order-2">
-                        {MAJORS.map((major, i) => (
+                        {majors.map((major, i) => (
                             <div 
                                 key={major.id} 
                                 className={`absolute inset-0 major-img-${i}`}
@@ -502,8 +494,8 @@ export default function Welcome() {
                                 >
                                     <div className={`w-8 h-8 rounded-full border-4 flex-shrink-0 z-20 transition-all duration-500 ${activeTimelineStep >= 1 ? 'border-brand-navy bg-brand-red scale-125 shadow-[0_0_20px_rgba(229,37,42,1)]' : 'border-brand-navy bg-white/30'}`}></div>
                                     <div className="pt-0 md:pt-4">
-                                        <h3 className={`font-bold tracking-[0.2em] uppercase text-xs md:text-sm mb-2 transition-colors ${activeTimelineStep >= 1 ? 'text-brand-red' : 'text-brand-orange'}`}>01. Device</h3>
-                                        <p className="text-base sm:text-xl lg:text-3xl font-light text-white leading-snug">Trusted binding mechanism prevents spoofing.</p>
+                                        <h3 className={`font-bold tracking-[0.2em] uppercase text-xs md:text-sm mb-2 transition-colors ${activeTimelineStep >= 1 ? 'text-brand-red' : 'text-brand-orange'}`}>01. Face AI</h3>
+                                        <p className="text-base sm:text-xl lg:text-3xl font-light text-white leading-snug">Real-time biometric recognition at the school gate.</p>
                                     </div>
                                 </div>
                                 
@@ -526,8 +518,8 @@ export default function Welcome() {
                                 >
                                     <div className={`w-8 h-8 rounded-full border-4 flex-shrink-0 z-20 transition-all duration-500 ${activeTimelineStep >= 3 ? 'border-brand-navy bg-brand-red scale-125 shadow-[0_0_20px_rgba(229,37,42,1)]' : 'border-brand-navy bg-white/30'}`}></div>
                                     <div className="pt-0 md:pt-4">
-                                        <h3 className={`font-bold tracking-[0.2em] uppercase text-xs md:text-sm mb-2 transition-colors ${activeTimelineStep >= 3 ? 'text-brand-red' : 'text-brand-orange'}`}>03. Session</h3>
-                                        <p className="text-base sm:text-xl lg:text-3xl font-light text-white leading-snug">Dynamic QR with anti-replay protection.</p>
+                                        <h3 className={`font-bold tracking-[0.2em] uppercase text-xs md:text-sm mb-2 transition-colors ${activeTimelineStep >= 3 ? 'text-brand-red' : 'text-brand-orange'}`}>03. Smart QR</h3>
+                                        <p className="text-base sm:text-xl lg:text-3xl font-light text-white leading-snug">Dynamic fallback with anti-replay protection.</p>
                                     </div>
                                 </div>
                             </div>

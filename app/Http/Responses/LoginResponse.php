@@ -17,6 +17,8 @@ class LoginResponse implements LoginResponseContract
     {
         $user = Auth::user();
 
+        \Illuminate\Support\Facades\Log::info('Custom LoginResponse executed for user: ' . $user->email);
+
         // Check if user is pending activation
         if ($user->account_status === \App\Models\User::STATUS_PENDING_ACTIVATION) {
             return $request->wantsJson()
@@ -29,7 +31,7 @@ class LoginResponse implements LoginResponseContract
             \App\Models\User::ROLE_SUPER_ADMIN => 'super-admin.dashboard',
             \App\Models\User::ROLE_ADMIN => 'admin.dashboard',
             \App\Models\User::ROLE_TEACHER => 'teacher.dashboard',
-            \App\Models\User::ROLE_STUDENT => 'dashboard',
+            \App\Models\User::ROLE_STUDENT => 'student.dashboard',
             default => 'dashboard',
         };
 
