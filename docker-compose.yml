@@ -12,12 +12,10 @@ services:
     volumes:
       # PENTING: Mount folder storage jika butuh file gambar awet walaupun container dihapus
       - ./storage/app/public:/var/www/html/storage/app/public
-    # Uncomment dan sesuaikan network di bawah jika menggunakan external network MySQL
-    # networks:
-    #   - global_db_network
+    networks:
+      - patpul_db_network
 
-# Uncomment ini jika Anda butuh konek ke network external (tempat tantechstev-mysql berada)
-# networks:
-#   global_db_network:
-#     external: true
-#     name: NAMA_NETWORK_MYSQL_ANDA
+networks:
+  patpul_db_network:
+    external: true
+    name: application_integration_default
