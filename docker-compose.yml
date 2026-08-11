@@ -10,6 +10,7 @@ services:
     ports:
       - "9001:80"
     volumes:
+      - ./.env:/var/www/html/.env
       # PENTING: Mount folder storage jika butuh file gambar awet walaupun container dihapus
       - ./storage/app/public:/var/www/html/storage/app/public
     networks:
