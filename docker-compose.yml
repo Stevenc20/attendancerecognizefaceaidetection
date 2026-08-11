@@ -1,0 +1,23 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: patpul-app
+    restart: unless-stopped
+    ports:
+      - "9001:80"
+    volumes:
+      # PENTING: Mount folder storage jika butuh file gambar awet walaupun container dihapus
+      - ./storage/app/public:/var/www/html/storage/app/public
+    # Uncomment dan sesuaikan network di bawah jika menggunakan external network MySQL
+    # networks:
+    #   - global_db_network
+
+# Uncomment ini jika Anda butuh konek ke network external (tempat tantechstev-mysql berada)
+# networks:
+#   global_db_network:
+#     external: true
+#     name: NAMA_NETWORK_MYSQL_ANDA
