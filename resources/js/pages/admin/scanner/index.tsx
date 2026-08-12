@@ -225,7 +225,11 @@ export default function FaceScanner() {
                 return;
             }
             
-            faceapi.matchDimensions(canvas, displaySize);
+            // Only match dimensions if they changed. Calling this every frame clears the canvas context, 
+            // causing the drawing to be completely invisible since it's cleared before the async await!
+            if (canvas.width !== displaySize.width || canvas.height !== displaySize.height) {
+                faceapi.matchDimensions(canvas, displaySize);
+            }
 
             try {
                 // Use SsdMobilenetv1 for maximum accuracy and stable bounding boxes
