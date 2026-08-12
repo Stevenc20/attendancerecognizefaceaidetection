@@ -118,9 +118,7 @@ Route::middleware(['auth', 'verified', \App\Http\Middleware\CheckActivation::cla
 
     // Admin Dashboard
     Route::middleware(['role:admin,super_admin'])->group(function () {
-        Route::get('/admin/dashboard', function () {
-            return inertia('dashboards/admin');
-        })->name('admin.dashboard');
+        Route::get('/admin/dashboard', [\App\Http\Controllers\Admin\DashboardController::class, 'index'])->name('admin.dashboard');
         
         // Face Scanner (Kiosk)
         Route::get('/admin/scanner', [\App\Http\Controllers\Admin\ScannerController::class, 'index'])->name('admin.scanner.index');
