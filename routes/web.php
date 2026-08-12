@@ -149,9 +149,7 @@ Route::middleware(['auth', 'verified', \App\Http\Middleware\CheckActivation::cla
 
     // Teacher Dashboard
     Route::middleware(['role:teacher'])->group(function () {
-        Route::get('/teacher/dashboard', function () {
-            return inertia('dashboards/teacher');
-        })->name('teacher.dashboard');
+        Route::get('/teacher/dashboard', [\App\Http\Controllers\Teacher\DashboardController::class, 'index'])->name('teacher.dashboard');
     });
 });
 
