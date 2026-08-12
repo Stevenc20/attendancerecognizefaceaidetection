@@ -64,7 +64,7 @@ export default function FaceScanner() {
                 // 1. Load models
                 setStatusText('Loading AI Models...');
                 await Promise.all([
-                    faceapi.nets.tinyFaceDetector.loadFromUri('/models'),
+                    faceapi.nets.ssdMobilenetv1.loadFromUri('/models'),
                     faceapi.nets.faceLandmark68Net.loadFromUri('/models'),
                     faceapi.nets.faceRecognitionNet.loadFromUri('/models')
                 ]);
@@ -168,9 +168,8 @@ export default function FaceScanner() {
             faceapi.matchDimensions(canvas, displaySize);
 
             try {
-                // Detect all faces using TinyFaceDetector for maximum speed
-                // inputSize: 512 allows detecting faces from further away (e.g., school gate)
-                const detections = await faceapi.detectAllFaces(video, new faceapi.TinyFaceDetectorOptions({ inputSize: 512, scoreThreshold: 0.4 }))
+                // Use SsdMobilenetv1 for maximum accuracy and distance (detects smaller faces)
+                const detections = await faceapi.detectAllFaces(video, new faceapi.SsdMobilenetv1Options({ minConfidence: 0.5 }))
                     .withFaceLandmarks()
                     .withFaceDescriptors();
 

@@ -37,7 +37,7 @@ export default function FaceEnrollment({ hasEnrolled }: { hasEnrolled: boolean }
         const loadModels = async () => {
             try {
                 await Promise.all([
-                    faceapi.nets.tinyFaceDetector.loadFromUri('/models'),
+                    faceapi.nets.ssdMobilenetv1.loadFromUri('/models'),
                     faceapi.nets.faceLandmark68Net.loadFromUri('/models'),
                     faceapi.nets.faceRecognitionNet.loadFromUri('/models')
                 ]);
@@ -109,8 +109,8 @@ export default function FaceEnrollment({ hasEnrolled }: { hasEnrolled: boolean }
             faceapi.matchDimensions(canvas, displaySize);
 
             try {
-                // Use inputSize: 416 so the face doesn't need to be right up to the camera
-                const detection = await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions({ inputSize: 416, scoreThreshold: 0.5 }))
+                // Use ssdMobilenetv1 which has much better landmark tracking and accuracy
+                const detection = await faceapi.detectSingleFace(video, new faceapi.SsdMobilenetv1Options({ minConfidence: 0.5 }))
                     .withFaceLandmarks()
                     .withFaceDescriptor();
 
