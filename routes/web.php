@@ -150,6 +150,9 @@ Route::middleware(['auth', 'verified', \App\Http\Middleware\CheckActivation::cla
     // Teacher Dashboard
     Route::middleware(['role:teacher'])->group(function () {
         Route::get('/teacher/dashboard', [\App\Http\Controllers\Teacher\DashboardController::class, 'index'])->name('teacher.dashboard');
+        Route::get('/teacher/classes', [\App\Http\Controllers\Teacher\ClassController::class, 'index'])->name('teacher.classes');
+        Route::get('/teacher/sessions', [\App\Http\Controllers\Teacher\SessionController::class, 'index'])->name('teacher.sessions');
+        Route::get('/teacher/reports', [\App\Http\Controllers\Teacher\ReportController::class, 'index'])->name('teacher.reports');
     });
 });
 
