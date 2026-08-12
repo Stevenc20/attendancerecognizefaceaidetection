@@ -114,6 +114,17 @@ export default function DashboardLayout({ role, userName, children }: DashboardL
     const navItems = getNavItems(role);
     const { url } = usePage();
 
+    React.useEffect(() => {
+        if (sidebarOpen) {
+            document.body.style.overflow = 'hidden';
+        } else {
+            document.body.style.overflow = '';
+        }
+        return () => {
+            document.body.style.overflow = '';
+        };
+    }, [sidebarOpen]);
+
     const handleLogout = (e: React.MouseEvent) => {
         e.preventDefault();
         router.post('/logout');
@@ -135,7 +146,7 @@ export default function DashboardLayout({ role, userName, children }: DashboardL
             <aside
                 className={`
                     fixed inset-y-0 left-0 z-50 flex flex-col bg-[#FAFAFA]
-                    border-r border-[#E5E5E2] h-screen
+                    border-r border-[#E5E5E2] h-[100dvh]
                     transition-all duration-300 ease-in-out
                     ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0
                 `}
