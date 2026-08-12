@@ -103,7 +103,7 @@ export default function FaceScanner() {
 
             } catch (err) {
                 console.error("Scanner init error", err);
-                setStatusText("Failed to initialize. Check console.");
+                setStatusText(`Failed to initialize: ${err instanceof Error ? err.message : String(err)}`);
             }
         };
 
