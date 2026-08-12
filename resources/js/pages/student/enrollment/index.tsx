@@ -26,6 +26,8 @@ export default function FaceEnrollment({ hasEnrolled }: { hasEnrolled: boolean }
     const stageIndexRef = useRef(0);
     const capturingRef = useRef(false);
     const descriptorsRef = useRef<Float32Array[]>([]);
+    
+    const [wantsToRetake, setWantsToRetake] = useState(false);
 
     const { data, setData, post, processing } = useForm({
         embedding: [] as number[]
@@ -167,21 +169,30 @@ export default function FaceEnrollment({ hasEnrolled }: { hasEnrolled: boolean }
                 </header>
 
                 <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden max-w-2xl mx-auto">
-                    {hasEnrolled && data.embedding.length === 0 ? (
+                    {hasEnrolled && data.embedding.length === 0 && !wantsToRetake ? (
                         <div className="p-12 text-center">
                             <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-green-50 text-green-500 mb-6">
                                 <CheckCircle size={40} />
                             </div>
-                            <h2 className="text-2xl font-bold text-[#111318] mb-2">You are already enrolled!</h2>
+                            <h2 className="text-2xl font-bold text-[#111318] mb-2">Anda sudah terdaftar!</h2>
                             <p className="text-[#6B6F76] mb-8">
-                                Your facial biometric data is successfully registered in the system. You are ready to use the face scanner for daily attendance.
+                                Data biometrik wajah Anda sudah terdaftar di sistem. Anda bisa langsung menggunakan scanner wajah untuk absen.
+                                Jika Anda merasa data wajah sebelumnya kurang akurat, silakan daftar ulang.
                             </p>
-                            <button 
-                                onClick={() => window.location.href = '/student/dashboard'}
-                                className="px-6 py-3 bg-[#111318] text-white font-medium rounded-xl hover:bg-gray-800 transition-colors"
-                            >
-                                Back to Dashboard
-                            </button>
+                            <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                                <button 
+                                    onClick={() => window.location.href = '/student/dashboard'}
+                                    className="px-6 py-3 bg-[#111318] text-white font-medium rounded-xl hover:bg-gray-800 transition-colors"
+                                >
+                                    Kembali ke Dashboard
+                                </button>
+                                <button 
+                                    onClick={() => setWantsToRetake(true)}
+                                    className="px-6 py-3 bg-red-50 text-[#D40000] font-medium rounded-xl hover:bg-red-100 transition-colors"
+                                >
+                                    Daftar Ulang Wajah
+                                </button>
+                            </div>
                         </div>
                     ) : (
                         <div className="p-6">
