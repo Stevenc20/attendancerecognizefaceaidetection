@@ -55,6 +55,7 @@ export default function FaceScanner() {
     
     // To prevent spamming the backend for the same person standing in front
     const lastRecognizedRef = useRef<{ [key: string]: number }>({});
+    const alreadyPresentUsersRef = useRef<Set<number>>(new Set());
     const logsRef = useRef<LogEntry[]>([]);
     const detectLoopIdRef = useRef<number>(0);
     
@@ -206,12 +207,12 @@ export default function FaceScanner() {
         const detectLoop = async () => {
             // Check if this loop is still the active one
             if (detectLoopIdRef.current !== currentLoopId) {
-return;
-}
+                return;
+            }
 
             if (!videoRef.current || !canvasRef.current) {
-return;
-}
+                return;
+            }
 
             const video = videoRef.current;
             const canvas = canvasRef.current;
@@ -233,8 +234,8 @@ return;
                     .withFaceDescriptors();
 
                 if (detectLoopIdRef.current !== currentLoopId) {
-return;
-} // double check after await
+                    return;
+                } // double check after await
 
                 const resizedDetections = faceapi.resizeResults(detections, displaySize);
                 const ctx = canvas.getContext('2d');
@@ -250,9 +251,16 @@ return;
                           const bestMatch = faceMatcher.findBestMatch(detection.descriptor);
                           
                           if (bestMatch.label !== 'unknown' && bestMatch.distance < 0.55) {
-                              drawColor = '#10B981'; // Green for Recognized
                               const user = JSON.parse(bestMatch.label);
-                              labelText = user.name.split(' ')[0]; // First name
+                              const firstName = user.name.split(' ')[0];
+                              
+                              if (alreadyPresentUsersRef.current.has(user.id)) {
+                                  drawColor = '#FBBF24'; // Yellow
+                                  labelText = `${firstName} (Recorded)`;
+                              } else {
+                                  drawColor = '#10B981'; // Green for Recognized
+                                  labelText = firstName;
+                              }
   
                               processAttendance(user, bestMatch.distance);
                           }
@@ -261,12 +269,8 @@ return;
                       // We must mirror the X coordinate because the video is mirrored via CSS
                       const mirrorX = displaySize.width - box.x - box.width;
                       
-                      const mirroredBox = { 
-                          x: mirrorX, 
-                          y: box.y, 
-                          width: box.width, 
-                          height: box.height 
-                      };
+                      // DrawBox requires a Rect or BoundingBox object, passing plain {x,y,w,h} throws error!
+                      const mirroredRect = new faceapi.Rect(mirrorX, box.y, box.width, box.height);
                       
                       const drawOptions = {
                           label: labelText,
@@ -274,7 +278,7 @@ return;
                           boxColor: drawColor
                       };
                       
-                      const drawBox = new faceapi.draw.DrawBox(mirroredBox, drawOptions);
+                      const drawBox = new faceapi.draw.DrawBox(mirroredRect, drawOptions);
                       drawBox.draw(canvas);
                   });
             } catch (err) {
@@ -339,11 +343,15 @@ return;
 
             return (await parseJsonResponse(res)) as { message?: string };
         })
-        .then(data => {
-            if (data.message === 'Attendance already recorded for today') {
-                setLogs(prev => prev.map(l => l.id === logId ? { ...l, status: 'already', message: 'Already Present' } : l));
-            }
-        })
+          .then(data => {
+              if (data.message === 'Attendance already recorded for today') {
+                  alreadyPresentUsersRef.current.add(user.id);
+                  setLogs(prev => prev.map(l => l.id === logId ? { ...l, status: 'already', message: 'Already Present' } : l));
+              } else {
+                  // If successful, also mark as present for future frames
+                  alreadyPresentUsersRef.current.add(user.id);
+              }
+          })
         .catch(err => {
             console.error("Failed to record", err);
             setLogs(prev => prev.map(l => l.id === logId ? { ...l, status: 'error', message: 'Network Error' } : l));
