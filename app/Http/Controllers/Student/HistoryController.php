@@ -14,7 +14,7 @@ class HistoryController extends Controller
     {
         $history = Attendance::where('user_id', Auth::id())
             ->orderBy('date', 'desc')
-            ->orderBy('time', 'desc')
+            ->orderBy('time_in', 'desc')
             ->get();
 
         return Inertia::render('student/history/index', [

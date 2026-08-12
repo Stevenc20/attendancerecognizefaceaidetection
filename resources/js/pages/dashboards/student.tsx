@@ -46,7 +46,7 @@ export default function StudentDashboard() {
                                 {todayRecord.status === 'Present' ? <CheckCircle size={24} /> :
                                  todayRecord.status === 'Late' ? <Clock size={24} /> : <XCircle size={24} />}
                                 <span className="font-bold text-lg uppercase tracking-wider">{todayRecord.status}</span>
-                                <span className="text-sm border-l border-current pl-3 opacity-80">{todayRecord.time}</span>
+                                <span className="text-sm border-l border-current pl-3 opacity-80">{todayRecord.time_in}</span>
                             </div>
                         ) : (
                             <div className="px-6 py-3 rounded-full flex items-center gap-3 bg-gray-50 text-gray-500 border border-gray-200">
@@ -104,7 +104,7 @@ export default function StudentDashboard() {
                                             }`}>
                                                 {record.status}
                                             </p>
-                                            <p className="text-xs font-semibold text-[#6B6F76]">{record.time}</p>
+                                            <p className="text-xs font-semibold text-[#6B6F76]">{record.time_in}</p>
                                         </div>
                                     </div>
                                 ))

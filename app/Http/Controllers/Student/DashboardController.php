@@ -40,7 +40,7 @@ class DashboardController extends Controller
         // Get recent attendances
         $recentAttendances = Attendance::where('user_id', $userId)
             ->orderBy('date', 'desc')
-            ->orderBy('time', 'desc')
+            ->orderBy('time_in', 'desc')
             ->take(7)
             ->get();
 

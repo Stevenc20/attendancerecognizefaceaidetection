@@ -73,7 +73,7 @@ export default function AttendanceHistory() {
                                                 </div>
                                             </td>
                                             <td className="py-4 px-5 text-[14px] font-medium text-[#111318]">
-                                                {record.time}
+                                                {record.time_in}
                                             </td>
                                             <td className="py-4 px-5">
                                                 <span className={`inline-flex items-center gap-1 text-[12px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-md ${
