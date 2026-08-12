@@ -101,6 +101,19 @@ export default function TeacherReports() {
                             </tbody>
                         </table>
                     </div>
+
+                    {/* SIGNATURE BLOCK */}
+                    <div className="p-8 pt-10 border-t border-gray-50 bg-white flex justify-end">
+                        <div className="text-center w-64">
+                            <p className="text-sm text-[#111318] mb-24">
+                                Jakarta, {new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
+                                <br />
+                                Wali Kelas
+                            </p>
+                            <p className="font-bold text-[#111318] border-b border-[#111318] pb-1 mb-1">{user.name}</p>
+                            <p className="text-xs text-[#6B6F76]">NIP. {user.nis || '-'}</p>
+                        </div>
+                    </div>
                 </section>
             ) : (
                 <section className="bg-white rounded-xl shadow-sm border border-gray-100 mb-6 p-8 text-center flex flex-col items-center justify-center">
