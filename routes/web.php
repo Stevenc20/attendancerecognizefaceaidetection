@@ -141,10 +141,11 @@ Route::middleware(['auth', 'verified', \App\Http\Middleware\CheckActivation::cla
         Route::get('/admin/import', [\App\Http\Controllers\Admin\DataImportController::class, 'index'])->name('admin.import');
         Route::post('/admin/import', [\App\Http\Controllers\Admin\DataImportController::class, 'store'])->name('admin.import.store');
         
-        // Modules (Placeholders)
-        Route::inertia('/admin/sessions', 'admin/sessions/index')->name('admin.sessions');
-        Route::inertia('/admin/alerts', 'admin/alerts/index')->name('admin.alerts');
-        Route::inertia('/admin/reports', 'admin/reports/index')->name('admin.reports');
+        // Modules
+        Route::get('/admin/sessions', [\App\Http\Controllers\Admin\SessionController::class, 'index'])->name('admin.sessions');
+        Route::get('/admin/alerts', [\App\Http\Controllers\Admin\AlertController::class, 'index'])->name('admin.alerts');
+        Route::post('/admin/alerts/{alert}/resolve', [\App\Http\Controllers\Admin\AlertController::class, 'resolve'])->name('admin.alerts.resolve');
+        Route::get('/admin/reports', [\App\Http\Controllers\Admin\ReportController::class, 'index'])->name('admin.reports');
     });
 
     // Teacher Dashboard

@@ -1,36 +1,99 @@
-import React from 'react';
 import { Head, usePage } from '@inertiajs/react';
 import DashboardLayout from '@/layouts/dashboard-layout';
-import { BarChart3 } from 'lucide-react';
+import { BarChart3, Building } from 'lucide-react';
 
-export default function Reports() {
-    const { auth } = usePage().props as any;
+export default function GlobalReports() {
+    const { auth, reports } = usePage().props as any;
 
     return (
         <DashboardLayout role="admin" userName={auth.user.name}>
-            <Head title="Reports — SMKN 40" />
+            <Head title="Global Reports" />
 
-            <header className="mb-8">
+            <header className="mb-6">
                 <p className="text-[12px] font-medium text-[#6B6F76] uppercase tracking-[0.1em] mb-1">
                     Modules
                 </p>
-                <h1 className="font-bold text-[#111318] leading-tight tracking-tight" style={{ fontSize: 'clamp(2rem, 1.5rem + 2vw, 2.5rem)' }}>
-                    Reports.
+                <h1 className="font-bold text-[#111318] leading-tight tracking-tight text-3xl">
+                    Global Reports
                 </h1>
-                <p className="text-[14px] text-[#6B6F76] font-medium mt-1">
-                    Generate and export attendance analytics.
-                </p>
             </header>
 
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden flex flex-col items-center justify-center py-24 text-center">
-                <div className="bg-gray-50 h-16 w-16 rounded-full flex items-center justify-center mb-4">
-                    <BarChart3 className="text-gray-400" size={24} />
+            <section className="bg-white rounded-xl shadow-sm border border-gray-100 mb-6 flex flex-col">
+                <div className="p-5 border-b border-gray-50 bg-gray-50/50">
+                    <h2 className="text-xl font-bold text-[#111318]">Classroom Performance</h2>
+                    <p className="text-sm text-[#6B6F76] mt-1">Aggregate attendance rates grouped by classroom for the current month.</p>
                 </div>
-                <h2 className="text-[#111318] font-bold text-lg mb-2">Coming Soon</h2>
-                <p className="text-[#6B6F76] text-sm max-w-sm mx-auto">
-                    The Reports module is currently under construction. Please check back later.
-                </p>
-            </div>
+                
+                <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse min-w-[700px]">
+                        <thead>
+                            <tr>
+                                <th className="py-3 px-5 text-[11px] font-semibold text-[#6B6F76] uppercase tracking-wider border-b border-gray-100 bg-white">
+                                    Classroom
+                                </th>
+                                <th className="py-3 px-5 text-[11px] font-semibold text-[#6B6F76] uppercase tracking-wider border-b border-gray-100 bg-white">
+                                    Wali Kelas
+                                </th>
+                                <th className="py-3 px-5 text-[11px] font-semibold text-[#6B6F76] uppercase tracking-wider border-b border-gray-100 bg-white text-center">
+                                    Total Students
+                                </th>
+                                <th className="py-3 px-5 text-[11px] font-semibold text-[#6B6F76] uppercase tracking-wider border-b border-gray-100 bg-white text-center">
+                                    Active Sessions
+                                </th>
+                                <th className="py-3 px-5 text-[11px] font-semibold text-[#6B6F76] uppercase tracking-wider border-b border-gray-100 bg-white text-right">
+                                    Avg. Attendance Rate
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {reports && reports.length > 0 ? (
+                                reports.map((row: any, idx: number) => {
+                                    const rate = row.attendance_rate;
+                                    return (
+                                        <tr key={idx} className="border-b border-gray-50 last:border-0 hover:bg-gray-50/50 transition-colors">
+                                            <td className="py-4 px-5">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="w-8 h-8 rounded-md bg-blue-50 text-blue-600 flex items-center justify-center">
+                                                        <Building size={16} />
+                                                    </div>
+                                                    <div className="text-[14px] font-bold text-[#111318]">
+                                                        {row.class_name}
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td className="py-4 px-5 text-[14px] font-semibold text-[#111318]">
+                                                {row.teacher_name}
+                                            </td>
+                                            <td className="py-4 px-5 text-center text-[14px] font-bold text-[#111318] tabular-nums">
+                                                {row.total_students}
+                                            </td>
+                                            <td className="py-4 px-5 text-center text-[14px] font-medium text-[#6B6F76] tabular-nums">
+                                                {row.active_sessions}
+                                            </td>
+                                            <td className="py-4 px-5 text-right">
+                                                <span className={`inline-flex items-center gap-1.5 text-[12px] font-bold tabular-nums px-2.5 py-1 rounded-md ${
+                                                    rate >= 80 ? 'text-emerald-700 bg-emerald-50' : 
+                                                    rate >= 50 ? 'text-amber-700 bg-amber-50' : 
+                                                    rate > 0 ? 'text-red-700 bg-red-50' : 'text-gray-500 bg-gray-100'
+                                                }`}>
+                                                    {rate}%
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    );
+                                })
+                            ) : (
+                                <tr>
+                                    <td colSpan={5} className="py-12 text-center text-[#6B6F76] text-sm flex-col items-center">
+                                        <BarChart3 size={32} className="mx-auto mb-3 text-gray-300" />
+                                        No classroom data found.
+                                    </td>
+                                </tr>
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+            </section>
         </DashboardLayout>
     );
 }
