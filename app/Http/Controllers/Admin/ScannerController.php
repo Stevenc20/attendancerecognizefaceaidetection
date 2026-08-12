@@ -18,7 +18,7 @@ class ScannerController extends Controller
     public function fetchEmbeddings()
     {
         $embeddings = FaceEmbedding::with(['user' => function ($query) {
-            $query->select('id', 'name', 'avatar', 'classroom_id');
+            $query->select('id', 'name', 'classroom_id');
         }, 'user.classroom' => function ($query) {
             $query->select('id', 'name', 'major_id');
         }, 'user.classroom.major' => function ($query) {
