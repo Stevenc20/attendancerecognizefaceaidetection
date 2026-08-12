@@ -63,7 +63,7 @@ export default function FaceEnrollment({ hasEnrolled }: { hasEnrolled: boolean }
     const startCamera = async () => {
         try {
             const mediaStream = await navigator.mediaDevices.getUserMedia({ 
-                video: { width: 720, height: 560 } 
+                video: { width: 720, height: 720 } 
             });
             setStream(mediaStream);
             if (videoRef.current) {
@@ -74,6 +74,13 @@ export default function FaceEnrollment({ hasEnrolled }: { hasEnrolled: boolean }
             setError("Tidak dapat mengakses kamera. Harap izinkan akses kamera di browser Anda.");
         }
     };
+
+    // Attach stream when video element becomes available (e.g. after clicking retake)
+    useEffect(() => {
+        if (stream && videoRef.current && !videoRef.current.srcObject) {
+            videoRef.current.srcObject = stream;
+        }
+    }, [stream, wantsToRetake]);
 
     const handleVideoPlay = () => {
         setIsDetecting(true);
@@ -168,7 +175,7 @@ export default function FaceEnrollment({ hasEnrolled }: { hasEnrolled: boolean }
                     </p>
                 </header>
 
-                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden max-w-2xl mx-auto">
+                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden max-w-4xl mx-auto">
                     {hasEnrolled && data.embedding.length === 0 && !wantsToRetake ? (
                         <div className="p-12 text-center">
                             <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-green-50 text-green-500 mb-6">
@@ -208,7 +215,7 @@ export default function FaceEnrollment({ hasEnrolled }: { hasEnrolled: boolean }
                                     </button>
                                 </div>
                             ) : (
-                                <div className="relative bg-[#080B1A] rounded-xl overflow-hidden aspect-video flex items-center justify-center mb-6">
+                                <div className="relative bg-[#080B1A] rounded-xl overflow-hidden min-h-[500px] md:min-h-[600px] flex items-center justify-center mb-6">
                                     {isLoading && (
                                         <div className="absolute inset-0 flex flex-col items-center justify-center text-white z-20 bg-[#080B1A]/80">
                                             <Loader2 className="animate-spin mb-4 text-[#D40000]" size={32} />
@@ -220,7 +227,7 @@ export default function FaceEnrollment({ hasEnrolled }: { hasEnrolled: boolean }
                                         ref={videoRef}
                                         onPlay={handleVideoPlay}
                                         width="720" 
-                                        height="560" 
+                                        height="720" 
                                         autoPlay 
                                         muted
                                         className="w-full h-full object-cover transform scale-x-[-1]"
@@ -233,15 +240,15 @@ export default function FaceEnrollment({ hasEnrolled }: { hasEnrolled: boolean }
                                     {/* Circle UI Overlay */}
                                     {!isLoading && !processing && isDetecting && (
                                         <div className="absolute inset-0 z-10 pointer-events-none flex flex-col items-center justify-center">
-                                            <h2 className="text-white text-lg md:text-xl font-bold bg-black/60 px-5 py-2 rounded-full mb-6 transition-all">
+                                            <h2 className="text-white text-xl md:text-2xl font-bold bg-black/60 px-6 py-3 rounded-full mb-8 transition-all">
                                                 {STAGES[stageIndex]?.label}
                                             </h2>
-                                            <div className={`w-52 h-52 md:w-64 md:h-64 rounded-full border-4 transition-all duration-500 ease-out ${
+                                            <div className={`w-64 h-64 md:w-80 md:h-80 rounded-full border-4 transition-all duration-500 ease-out ${
                                                 capturingRef.current 
-                                                    ? 'border-green-400 bg-green-400/20 scale-105 shadow-[0_0_30px_rgba(74,222,128,0.5)]' 
+                                                    ? 'border-green-400 bg-green-400/20 scale-105 shadow-[0_0_40px_rgba(74,222,128,0.5)]' 
                                                     : 'border-white/70 border-dashed animate-[spin_10s_linear_infinite]'
                                             }`}></div>
-                                            <p className="text-white mt-6 bg-black/60 px-4 py-1.5 rounded-full text-sm font-medium">
+                                            <p className="text-white mt-8 bg-black/60 px-5 py-2 rounded-full text-base font-medium">
                                                 {capturingRef.current ? 'Tertangkap! Bersiap ke pose berikutnya...' : STAGES[stageIndex]?.instruction}
                                             </p>
                                         </div>
