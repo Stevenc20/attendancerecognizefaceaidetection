@@ -37,7 +37,7 @@ export default function FaceEnrollment({ hasEnrolled }: { hasEnrolled: boolean }
         const loadModels = async () => {
             try {
                 await Promise.all([
-                    faceapi.nets.ssdMobilenetv1.loadFromUri('/models'),
+                    faceapi.nets.tinyFaceDetector.loadFromUri('/models'),
                     faceapi.nets.faceLandmark68Net.loadFromUri('/models'),
                     faceapi.nets.faceRecognitionNet.loadFromUri('/models')
                 ]);
@@ -109,7 +109,7 @@ export default function FaceEnrollment({ hasEnrolled }: { hasEnrolled: boolean }
             faceapi.matchDimensions(canvas, displaySize);
 
             try {
-                const detection = await faceapi.detectSingleFace(video)
+                const detection = await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.5 }))
                     .withFaceLandmarks()
                     .withFaceDescriptor();
 

@@ -64,7 +64,7 @@ export default function FaceScanner() {
                 // 1. Load models
                 setStatusText('Loading AI Models...');
                 await Promise.all([
-                    faceapi.nets.ssdMobilenetv1.loadFromUri('/models'),
+                    faceapi.nets.tinyFaceDetector.loadFromUri('/models'),
                     faceapi.nets.faceLandmark68Net.loadFromUri('/models'),
                     faceapi.nets.faceRecognitionNet.loadFromUri('/models')
                 ]);
@@ -92,7 +92,8 @@ export default function FaceScanner() {
                         return new faceapi.LabeledFaceDescriptors(JSON.stringify(data.user), descriptorsArray);
                     });
                     
-                    const matcher = new faceapi.FaceMatcher(labeledDescriptors, 0.45);
+                    // Increase threshold to 0.55 for better matching rate
+                    const matcher = new faceapi.FaceMatcher(labeledDescriptors, 0.55);
                     setFaceMatcher(matcher);
                     setStatusText(`Synced ${embeddingsData.length} enrolled faces.`);
                 }
@@ -167,8 +168,8 @@ export default function FaceScanner() {
             faceapi.matchDimensions(canvas, displaySize);
 
             try {
-                // Detect all faces
-                const detections = await faceapi.detectAllFaces(video)
+                // Detect all faces using TinyFaceDetector for maximum speed
+                const detections = await faceapi.detectAllFaces(video, new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.5 }))
                     .withFaceLandmarks()
                     .withFaceDescriptors();
 
@@ -187,7 +188,7 @@ export default function FaceScanner() {
                     if (faceMatcher) {
                         const bestMatch = faceMatcher.findBestMatch(detection.descriptor);
                         
-                        if (bestMatch.label !== 'unknown' && bestMatch.distance < 0.45) {
+                        if (bestMatch.label !== 'unknown' && bestMatch.distance < 0.55) {
                             drawColor = '#10B981'; // Green (Recognized)
                             const user = JSON.parse(bestMatch.label);
                             labelText = user.name.split(' ')[0]; // First name
@@ -219,8 +220,8 @@ export default function FaceScanner() {
                 console.error("Face detection error:", err);
             }
 
-            // Schedule next frame
-            setTimeout(detectLoop, 200);
+            // Schedule next frame using requestAnimationFrame for maximum smoothness
+            requestAnimationFrame(detectLoop);
         };
 
         detectLoop();
