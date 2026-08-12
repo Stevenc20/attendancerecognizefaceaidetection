@@ -76,7 +76,9 @@ Route::middleware(['auth', 'verified', \App\Http\Middleware\CheckActivation::cla
         // Modules
         Route::get('/student/history', [\App\Http\Controllers\Student\HistoryController::class, 'index'])->name('student.history');
         Route::get('/student/profile', [\App\Http\Controllers\Student\ProfileController::class, 'index'])->name('student.profile');
-        Route::get('/student/device', [\App\Http\Controllers\Student\DeviceController::class, 'index'])->name('student.device');
+        Route::get('/student/device', [\App\Http\Controllers\Student\DeviceController::class, 'index'])
+            ->middleware(\Illuminate\Auth\Middleware\RequirePassword::class)
+            ->name('student.device');
     });
 
     // Super Admin Dashboard

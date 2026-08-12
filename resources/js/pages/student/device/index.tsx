@@ -13,11 +13,30 @@ export default function StudentDevice() {
         },
     });
 
+    const getDeviceName = () => {
+        const ua = navigator.userAgent;
+
+        const browser = [
+            { pattern: /Edg|Edge/, name: 'Edge' },
+            { pattern: /OPR|Opera|OPiOS/, name: 'Opera' },
+            { pattern: /Firefox|FxiOS/, name: 'Firefox' },
+            { pattern: /Chrome|CriOS/, name: 'Chrome' },
+            { pattern: /Safari/, name: 'Safari' },
+        ].find(({ pattern }) => pattern.test(ua))?.name;
+
+        const os = [
+            { pattern: /iPhone/, name: 'iPhone' },
+            { pattern: /iPad|Macintosh(?=.*Mobile)/, name: 'iPad' },
+            { pattern: /Android/, name: 'Android' },
+            { pattern: /Mac/, name: 'Mac' },
+            { pattern: /Windows/, name: 'Windows' },
+        ].find(({ pattern }) => pattern.test(ua))?.name;
+
+        return [browser, os].filter(Boolean).join(' on ') || 'My Device';
+    };
+
     const handleRegisterDevice = async () => {
-        const name = prompt("Enter a name for this device (e.g. My Phone):", "My Phone");
-        if (name) {
-            await register(name);
-        }
+        await register(getDeviceName());
     };
 
     return (
