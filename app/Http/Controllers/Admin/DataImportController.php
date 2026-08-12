@@ -137,28 +137,37 @@ class DataImportController extends Controller
                 }
 
                 // Process Students
+                $studentsToUpsert = [];
                 foreach ($classData['students'] as $studentData) {
                     $nis = $studentData['nis'];
                     $name = $studentData['name'];
                     
                     if ($nis) {
-                        User::updateOrCreate(
-                            ['nis' => $nis],
-                            [
-                                'name' => $name,
-                                'email' => $nis . '@student.smkn40.sch.id',
-                                'password' => $defaultPassword,
-                                'role' => User::ROLE_STUDENT,
-                                'classroom_id' => $classroom->id,
-                                'account_status' => User::STATUS_ACTIVE,
-                            ]
-                        );
+                        $studentsToUpsert[] = [
+                            'nis' => $nis,
+                            'name' => $name,
+                            'email' => $nis . '@student.smkn40.sch.id',
+                            'password' => $defaultPassword,
+                            'role' => User::ROLE_STUDENT,
+                            'classroom_id' => $classroom->id,
+                            'account_status' => User::STATUS_ACTIVE,
+                            'created_at' => now(),
+                            'updated_at' => now(),
+                        ];
                         $stats['students_imported']++;
                     }
+                }
+
+                if (!empty($studentsToUpsert)) {
+                    User::upsert(
+                        $studentsToUpsert,
+                        ['nis'],
+                        ['name', 'email', 'password', 'classroom_id', 'updated_at']
+                    );
                 }
             }
         });
 
-        return redirect()->route('admin.students')->with('success', "Import completed successfully! Created {$stats['classrooms_created']} classes, imported {$stats['students_imported']} students and {$stats['teachers_imported']} teachers.");
+        return redirect()->back()->with('success', "Import completed successfully! Created {$stats['classrooms_created']} classes, imported {$stats['students_imported']} students and {$stats['teachers_imported']} teachers.");
     }
 }
