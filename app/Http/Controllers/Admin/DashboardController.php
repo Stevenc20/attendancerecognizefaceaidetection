@@ -20,8 +20,8 @@ class DashboardController extends Controller
         // Fetch all attendance for today
         $todayAttendances = Attendance::where('date', $today)->get();
         
-        $present = $todayAttendances->where('status', 'Present')->count();
-        $late = $todayAttendances->where('status', 'Late')->count();
+        $present = $todayAttendances->whereIn('status', ['present', 'Present'])->count();
+        $late = $todayAttendances->whereIn('status', ['late', 'Late'])->count();
         $absent = max(0, $totalStudents - $present - $late); // Simple calc for now
 
         // Format recent activity
@@ -36,7 +36,7 @@ class DashboardController extends Controller
                 'time' => Carbon::parse($att->time_in)->format('H:i'),
                 'name' => $att->user->name ?? 'Unknown',
                 'cls' => ($att->user && $att->user->classroom) ? $att->user->classroom->name : '-',
-                'status' => $att->status,
+                'status' => ucfirst($att->status),
                 'method' => $att->method,
             ];
         });
