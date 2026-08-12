@@ -45,7 +45,7 @@ class DataImportController extends Controller
         $scriptPath = storage_path('app/scripts/parse_excel.py');
 
         // Execute python script to parse Excel
-        $process = new Process(['C:\\Python314\\python.exe', $scriptPath, $fullPath]);
+        $process = new Process(['python3', $scriptPath, $fullPath]);
         $process->setTimeout(300); // 5 minutes max
         $process->run();
 
