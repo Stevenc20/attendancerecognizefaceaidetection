@@ -1,7 +1,22 @@
-import React, { useEffect, useRef, useState } from 'react';
 import { Head, Link } from '@inertiajs/react';
 import * as faceapi from '@vladmandic/face-api';
 import { Camera, CheckCircle, Loader2, Maximize, AlertCircle, XCircle, Sun, Moon } from 'lucide-react';
+import React, { useEffect, useRef, useState } from 'react';
+import { attendance, embeddings } from '@/routes/admin/scanner';
+
+// Resolve asset/API paths relative to the app base URL so the scanner also works when
+// the app is served from a sub-path (e.g. http://host/patpul/public) instead of the domain root.
+const baseUrl = import.meta.env.BASE_URL;
+
+const parseJsonResponse = async (response: Response): Promise<unknown> => {
+    const text = await response.text();
+
+    try {
+        return JSON.parse(text);
+    } catch {
+        throw new Error(`Unexpected response from ${response.url} (HTTP ${response.status}). Expected JSON.`);
+    }
+};
 
 // Type definitions
 type FaceEmbedding = {
@@ -59,20 +74,51 @@ export default function FaceScanner() {
     }, []);
 
     useEffect(() => {
+        const loadFaceModel = async (modelName: string): Promise<void> => {
+            const manifestUrl = `${baseUrl}models/${modelName}-weights_manifest.json`;
+            const response = await fetch(manifestUrl);
+            const body = await response.text();
+
+            try {
+                JSON.parse(body);
+            } catch {
+                throw new Error(`Face model files missing at ${manifestUrl} (HTTP ${response.status}). Re-upload the public/models folder.`);
+            }
+        };
+
         const initializeScanner = async () => {
             try {
                 // 1. Load models
                 setStatusText('Loading AI Models...');
                 await Promise.all([
-                    faceapi.nets.ssdMobilenetv1.loadFromUri('/models'),
-                    faceapi.nets.faceLandmark68Net.loadFromUri('/models'),
-                    faceapi.nets.faceRecognitionNet.loadFromUri('/models')
+                    loadFaceModel('ssd_mobilenetv1_model').then(() => faceapi.nets.ssdMobilenetv1.loadFromUri(`${baseUrl}models`)),
+                    loadFaceModel('face_landmark_68_model').then(() => faceapi.nets.faceLandmark68Net.loadFromUri(`${baseUrl}models`)),
+                    loadFaceModel('face_recognition_model').then(() => faceapi.nets.faceRecognitionNet.loadFromUri(`${baseUrl}models`))
                 ]);
 
                 // 2. Fetch all embeddings
                 setStatusText('Syncing Biometric Data...');
-                const response = await fetch('/admin/scanner/embeddings');
-                const embeddingsData: FaceEmbedding[] = await response.json();
+                const response = await fetch(embeddings.url(), {
+                    headers: { Accept: 'application/json' }
+                });
+
+                if (response.redirected) {
+                    throw new Error(`Redirected to ${response.url}. Session may have expired - please log in again and retry.`);
+                }
+
+                if (!response.ok) {
+                    const detail = await response.text().catch(() => '');
+
+                    throw new Error(`Failed to sync biometric data: ${embeddings.url()} returned HTTP ${response.status}. ${detail.slice(0, 120)}`);
+                }
+
+                const parsed = (await parseJsonResponse(response)) as unknown;
+
+                if (!Array.isArray(parsed)) {
+                    throw new Error(`Unexpected data from ${embeddings.url()}: expected a JSON array.`);
+                }
+
+                const embeddingsData = parsed as FaceEmbedding[];
 
                 if (embeddingsData.length === 0) {
                     setStatusText('No enrolled students found. Scanner active, but cannot recognize anyone.');
@@ -114,6 +160,7 @@ export default function FaceScanner() {
     useEffect(() => {
         return () => {
             detectLoopIdRef.current++; // kill detection loop
+
             if (videoRef.current && videoRef.current.srcObject) {
                 const s = videoRef.current.srcObject as MediaStream;
                 s.getTracks().forEach(track => track.stop());
@@ -135,9 +182,11 @@ export default function FaceScanner() {
             };
             const mediaStream = await navigator.mediaDevices.getUserMedia(constraints);
             setStream(mediaStream);
+
             if (videoRef.current) {
                 videoRef.current.srcObject = mediaStream;
             }
+
             setIsLoading(false);
         } catch (err) {
             console.error("Error accessing camera", err);
@@ -158,15 +207,22 @@ export default function FaceScanner() {
 
         const detectLoop = async () => {
             // Check if this loop is still the active one
-            if (detectLoopIdRef.current !== currentLoopId) return;
-            if (!videoRef.current || !canvasRef.current) return;
+            if (detectLoopIdRef.current !== currentLoopId) {
+return;
+}
+
+            if (!videoRef.current || !canvasRef.current) {
+return;
+}
 
             const video = videoRef.current;
             const canvas = canvasRef.current;
             
             const displaySize = { width: video.videoWidth, height: video.videoHeight };
+
             if (displaySize.width === 0) {
                 setTimeout(detectLoop, 200);
+
                 return;
             }
             
@@ -178,7 +234,9 @@ export default function FaceScanner() {
                     .withFaceLandmarks()
                     .withFaceDescriptors();
 
-                if (detectLoopIdRef.current !== currentLoopId) return; // double check after await
+                if (detectLoopIdRef.current !== currentLoopId) {
+return;
+} // double check after await
 
                 const resizedDetections = faceapi.resizeResults(detections, displaySize);
                 const ctx = canvas.getContext('2d');
@@ -244,7 +302,7 @@ export default function FaceScanner() {
         lastRecognizedRef.current[user.id] = now;
 
         // Play sound
-        const audio = new Audio('/sounds/ding.mp3'); // We'll assume a sound file exists or just let it fail silently
+        const audio = new Audio(`${baseUrl}sounds/ding.mp3`); // We'll assume a sound file exists or just let it fail silently
         audio.play().catch(e => {});
 
         // Add optimistic log
@@ -262,10 +320,11 @@ export default function FaceScanner() {
         setLogs(prev => [newLog, ...prev].slice(0, 8)); // Keep last 8
 
         // Send to backend
-        fetch('/admin/scanner/attendance', {
+        fetch(attendance.url(), {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
+                'Accept': 'application/json',
                 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
             },
             body: JSON.stringify({
@@ -273,7 +332,15 @@ export default function FaceScanner() {
                 method: 'Face'
             })
         })
-        .then(res => res.json())
+        .then(async res => {
+            if (!res.ok) {
+                const detail = await res.text().catch(() => '');
+
+                throw new Error(`Attendance request failed with HTTP ${res.status}. ${detail.slice(0, 120)}`);
+            }
+
+            return (await parseJsonResponse(res)) as { message?: string };
+        })
         .then(data => {
             if (data.message === 'Attendance already recorded for today') {
                 setLogs(prev => prev.map(l => l.id === logId ? { ...l, status: 'already', message: 'Already Present' } : l));
