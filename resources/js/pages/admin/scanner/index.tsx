@@ -268,18 +268,23 @@ export default function FaceScanner() {
   
                       // We must mirror the X coordinate because the video is mirrored via CSS
                       const mirrorX = displaySize.width - box.x - box.width;
-                      
-                      // DrawBox requires a Rect or BoundingBox object, passing plain {x,y,w,h} throws error!
-                      const mirroredRect = new faceapi.Rect(mirrorX, box.y, box.width, box.height);
-                      
-                      const drawOptions = {
-                          label: labelText,
-                          lineWidth: 3,
-                          boxColor: drawColor
-                      };
-                      
-                      const drawBox = new faceapi.draw.DrawBox(mirroredRect, drawOptions);
-                      drawBox.draw(canvas);
+  
+                      // Draw Box manually to avoid face-api.js constructor crashes
+                      if (ctx) {
+                          ctx.strokeStyle = drawColor;
+                          ctx.lineWidth = 3;
+                          ctx.strokeRect(mirrorX, box.y, box.width, box.height);
+                          
+                          // Draw Label background
+                          ctx.fillStyle = drawColor;
+                          const textWidth = ctx.measureText(labelText).width;
+                          ctx.fillRect(mirrorX, box.y - 25, textWidth + 10, 25);
+                          
+                          // Draw Label text
+                          ctx.fillStyle = '#ffffff';
+                          ctx.font = '16px Arial';
+                          ctx.fillText(labelText, mirrorX + 5, box.y - 7);
+                      }
                   });
             } catch (err) {
                 console.error("Face detection error:", err);
