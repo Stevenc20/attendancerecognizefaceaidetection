@@ -50,8 +50,9 @@ class DataImportController extends Controller
         $process->run();
 
         if (!$process->isSuccessful()) {
-            Log::error('Python Excel Parser Error: ' . $process->getErrorOutput() . ' Output: ' . $process->getOutput());
-            return redirect()->back()->withErrors(['file' => 'Failed to parse the Excel file. Ensure the format is correct.']);
+            $errorDetail = $process->getErrorOutput() ?: $process->getOutput();
+            Log::error('Python Excel Parser Error: ' . $errorDetail);
+            return redirect()->back()->withErrors(['file' => 'System Error: ' . substr($errorDetail, 0, 200)]);
         }
 
         $output = trim($process->getOutput());
