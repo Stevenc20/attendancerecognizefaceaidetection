@@ -169,7 +169,8 @@ export default function FaceScanner() {
 
             try {
                 // Detect all faces using TinyFaceDetector for maximum speed
-                const detections = await faceapi.detectAllFaces(video, new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.5 }))
+                // inputSize: 512 allows detecting faces from further away (e.g., school gate)
+                const detections = await faceapi.detectAllFaces(video, new faceapi.TinyFaceDetectorOptions({ inputSize: 512, scoreThreshold: 0.4 }))
                     .withFaceLandmarks()
                     .withFaceDescriptors();
 

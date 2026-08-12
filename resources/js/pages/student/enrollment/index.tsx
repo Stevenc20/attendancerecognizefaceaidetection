@@ -109,7 +109,8 @@ export default function FaceEnrollment({ hasEnrolled }: { hasEnrolled: boolean }
             faceapi.matchDimensions(canvas, displaySize);
 
             try {
-                const detection = await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.5 }))
+                // Use inputSize: 416 so the face doesn't need to be right up to the camera
+                const detection = await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions({ inputSize: 416, scoreThreshold: 0.5 }))
                     .withFaceLandmarks()
                     .withFaceDescriptor();
 
