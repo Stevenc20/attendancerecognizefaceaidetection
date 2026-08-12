@@ -52,10 +52,14 @@ export default function FaceEnrollment({ hasEnrolled }: { hasEnrolled: boolean }
         };
 
         loadModels();
+    }, []);
 
+    // Cleanup camera on unmount
+    useEffect(() => {
         return () => {
-            if (stream) {
-                stream.getTracks().forEach(track => track.stop());
+            if (videoRef.current && videoRef.current.srcObject) {
+                const s = videoRef.current.srcObject as MediaStream;
+                s.getTracks().forEach(track => track.stop());
             }
         };
     }, []);

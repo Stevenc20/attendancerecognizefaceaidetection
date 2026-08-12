@@ -108,10 +108,15 @@ export default function FaceScanner() {
         };
 
         initializeScanner();
+    }, []);
 
+    // Cleanup camera on unmount
+    useEffect(() => {
         return () => {
-            if (stream) {
-                stream.getTracks().forEach(track => track.stop());
+            detectLoopIdRef.current++; // kill detection loop
+            if (videoRef.current && videoRef.current.srcObject) {
+                const s = videoRef.current.srcObject as MediaStream;
+                s.getTracks().forEach(track => track.stop());
             }
         };
     }, []);
