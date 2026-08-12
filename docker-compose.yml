@@ -15,6 +15,8 @@ services:
       - ./storage/app/public:/var/www/html/storage/app/public
       # Agar hasil git pull (public/build) langsung aktif tanpa rebuild image
       - ./public/build:/var/www/html/public/build
+      # Mount folder app agar perubahan backend langsung aktif
+      - ./app:/var/www/html/app
     networks:
       - patpul_db_network
 
