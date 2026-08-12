@@ -79,9 +79,17 @@ export default function FaceScanner() {
                 } else {
                     // Create LabeledFaceDescriptors
                     const labeledDescriptors = embeddingsData.map(data => {
-                        const descriptor = new Float32Array(data.embedding_data);
+                        let descriptorsArray: Float32Array[];
+                        
+                        // Check if embedding_data is an array of arrays (multiple poses) or flat array (single pose)
+                        if (Array.isArray(data.embedding_data[0])) {
+                            descriptorsArray = (data.embedding_data as unknown as number[][]).map(arr => new Float32Array(arr));
+                        } else {
+                            descriptorsArray = [new Float32Array(data.embedding_data)];
+                        }
+                        
                         // We store JSON string in label to quickly parse user info later
-                        return new faceapi.LabeledFaceDescriptors(JSON.stringify(data.user), [descriptor]);
+                        return new faceapi.LabeledFaceDescriptors(JSON.stringify(data.user), descriptorsArray);
                     });
                     
                     const matcher = new faceapi.FaceMatcher(labeledDescriptors, 0.45);

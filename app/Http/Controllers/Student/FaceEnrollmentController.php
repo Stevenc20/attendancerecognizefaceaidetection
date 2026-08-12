@@ -23,8 +23,7 @@ class FaceEnrollmentController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'embedding' => 'required|array',
-            'embedding.*' => 'numeric'
+            'embedding' => 'required|array'
         ]);
 
         $user = Auth::user();

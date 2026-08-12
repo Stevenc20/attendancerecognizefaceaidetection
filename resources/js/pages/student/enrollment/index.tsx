@@ -128,19 +128,12 @@ export default function FaceEnrollment({ hasEnrolled }: { hasEnrolled: boolean }
     };
 
     const captureFaceData = (capturedDescriptors: Float32Array[]) => {
-        // Average the descriptors
-        const averaged = new Float32Array(128);
-        for (let i = 0; i < 128; i++) {
-            let sum = 0;
-            for (let j = 0; j < capturedDescriptors.length; j++) {
-                sum += capturedDescriptors[j][i];
-            }
-            averaged[i] = sum / capturedDescriptors.length;
-        }
+        // Send all 4 descriptors as an array of arrays to the backend
+        // This allows face-api.js to match against multiple poses (front, smile, left, right)
+        // significantly increasing recognition accuracy compared to averaging.
+        const embeddingsArray = capturedDescriptors.map(desc => Array.from(desc));
         
-        const embeddingArray = Array.from(averaged);
-        
-        setData('embedding', embeddingArray);
+        setData('embedding', embeddingsArray as any);
         setStatus('Mengirim data biometrik...');
         
         post('/student/face-enrollment', {
