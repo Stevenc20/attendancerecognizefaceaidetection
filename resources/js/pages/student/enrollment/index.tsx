@@ -10,10 +10,22 @@ export default function FaceEnrollment({ hasEnrolled }: { hasEnrolled: boolean }
     const canvasRef = useRef<HTMLCanvasElement>(null);
     
     const [isLoading, setIsLoading] = useState(true);
-    const [status, setStatus] = useState<string>('Loading AI Models...');
+    const [status, setStatus] = useState<string>('Memuat model AI...');
     const [isDetecting, setIsDetecting] = useState(false);
     const [stream, setStream] = useState<MediaStream | null>(null);
     const [error, setError] = useState<string | null>(null);
+    
+    const STAGES = [
+        { label: "Pegang HP/Kamera Anda dengan tegak", instruction: "Jangan gerak-gerak dulu..." },
+        { label: "Senyum", instruction: "Tahan senyum Anda..." },
+        { label: "Tengok Kiri", instruction: "Tengok wajah sedikit ke kiri..." },
+        { label: "Tengok Kanan", instruction: "Tengok wajah sedikit ke kanan..." }
+    ];
+    
+    const [stageIndex, setStageIndex] = useState(0);
+    const stageIndexRef = useRef(0);
+    const capturingRef = useRef(false);
+    const descriptorsRef = useRef<Float32Array[]>([]);
 
     const { data, setData, post, processing } = useForm({
         embedding: [] as number[]
@@ -27,12 +39,12 @@ export default function FaceEnrollment({ hasEnrolled }: { hasEnrolled: boolean }
                     faceapi.nets.faceLandmark68Net.loadFromUri('/models'),
                     faceapi.nets.faceRecognitionNet.loadFromUri('/models')
                 ]);
-                setStatus('Models loaded. Please allow camera access.');
+                setStatus('Model dimuat. Izinkan akses kamera.');
                 setIsLoading(false);
                 startCamera();
             } catch (err) {
                 console.error("Error loading models", err);
-                setError("Failed to load Face AI models. Please ensure the model files exist in /public/models.");
+                setError("Gagal memuat model Face AI. Pastikan file model ada di folder /public/models.");
                 setIsLoading(false);
             }
         };
@@ -57,13 +69,17 @@ export default function FaceEnrollment({ hasEnrolled }: { hasEnrolled: boolean }
             }
         } catch (err) {
             console.error("Error accessing camera", err);
-            setError("Cannot access camera. Please allow camera permissions in your browser.");
+            setError("Tidak dapat mengakses kamera. Harap izinkan akses kamera di browser Anda.");
         }
     };
 
     const handleVideoPlay = () => {
         setIsDetecting(true);
-        setStatus('Position your face in the center...');
+        setStatus(STAGES[0].label);
+        stageIndexRef.current = 0;
+        descriptorsRef.current = [];
+        capturingRef.current = false;
+        setStageIndex(0);
         
         const detectInterval = setInterval(async () => {
             if (!videoRef.current || !canvasRef.current || processing || data.embedding.length > 0) {
@@ -87,21 +103,45 @@ export default function FaceEnrollment({ hasEnrolled }: { hasEnrolled: boolean }
                 const resizedDetections = faceapi.resizeResults(detection, displaySize);
                 faceapi.draw.drawDetections(canvas, resizedDetections);
                 
-                if (detection.detection.score > 0.85) {
-                    setStatus('Face detected! Capturing data...');
-                    clearInterval(detectInterval);
-                    captureFaceData(detection.descriptor);
+                if (detection.detection.score > 0.85 && !capturingRef.current) {
+                    capturingRef.current = true;
+                    const currentDescriptors = [...descriptorsRef.current, detection.descriptor];
+                    descriptorsRef.current = currentDescriptors;
+                    
+                    if (currentDescriptors.length >= STAGES.length) {
+                        setStatus('Proses selesai! Menyimpan data...');
+                        clearInterval(detectInterval);
+                        captureFaceData(currentDescriptors);
+                    } else {
+                        const nextStage = currentDescriptors.length;
+                        stageIndexRef.current = nextStage;
+                        setStageIndex(nextStage);
+                        setStatus(STAGES[nextStage].label);
+                        
+                        setTimeout(() => {
+                            capturingRef.current = false;
+                        }, 2000);
+                    }
                 }
             }
         }, 300);
     };
 
-    const captureFaceData = (descriptor: Float32Array) => {
-        // Convert Float32Array to standard array for JSON submission
-        const embeddingArray = Array.from(descriptor);
+    const captureFaceData = (capturedDescriptors: Float32Array[]) => {
+        // Average the descriptors
+        const averaged = new Float32Array(128);
+        for (let i = 0; i < 128; i++) {
+            let sum = 0;
+            for (let j = 0; j < capturedDescriptors.length; j++) {
+                sum += capturedDescriptors[j][i];
+            }
+            averaged[i] = sum / capturedDescriptors.length;
+        }
+        
+        const embeddingArray = Array.from(averaged);
         
         setData('embedding', embeddingArray);
-        setStatus('Submitting biometric data...');
+        setStatus('Mengirim data biometrik...');
         
         post('/student/face-enrollment', {
             onSuccess: () => {
@@ -110,8 +150,8 @@ export default function FaceEnrollment({ hasEnrolled }: { hasEnrolled: boolean }
                 }
             },
             onError: () => {
-                setError("Failed to save biometric data. Please try again.");
-                setStatus('Failed.');
+                setError("Gagal menyimpan data biometrik. Silakan coba lagi.");
+                setStatus('Gagal.');
             }
         });
     };
@@ -186,10 +226,27 @@ export default function FaceEnrollment({ hasEnrolled }: { hasEnrolled: boolean }
                                         className="absolute top-0 left-0 w-full h-full transform scale-x-[-1]"
                                     />
 
+                                    {/* Circle UI Overlay */}
+                                    {!isLoading && !processing && isDetecting && (
+                                        <div className="absolute inset-0 z-10 pointer-events-none flex flex-col items-center justify-center">
+                                            <h2 className="text-white text-lg md:text-xl font-bold bg-black/60 px-5 py-2 rounded-full mb-6 transition-all">
+                                                {STAGES[stageIndex]?.label}
+                                            </h2>
+                                            <div className={`w-52 h-52 md:w-64 md:h-64 rounded-full border-4 transition-all duration-500 ease-out ${
+                                                capturingRef.current 
+                                                    ? 'border-green-400 bg-green-400/20 scale-105 shadow-[0_0_30px_rgba(74,222,128,0.5)]' 
+                                                    : 'border-white/70 border-dashed animate-[spin_10s_linear_infinite]'
+                                            }`}></div>
+                                            <p className="text-white mt-6 bg-black/60 px-4 py-1.5 rounded-full text-sm font-medium">
+                                                {capturingRef.current ? 'Tertangkap! Bersiap ke pose berikutnya...' : STAGES[stageIndex]?.instruction}
+                                            </p>
+                                        </div>
+                                    )}
+
                                     {processing && (
                                         <div className="absolute inset-0 flex flex-col items-center justify-center text-white z-20 bg-[#080B1A]/80">
                                             <Loader2 className="animate-spin mb-4 text-[#D40000]" size={32} />
-                                            <p className="font-medium text-lg">Saving biometric data...</p>
+                                            <p className="font-medium text-lg">Menyimpan data biometrik...</p>
                                         </div>
                                     )}
                                 </div>
@@ -202,12 +259,12 @@ export default function FaceEnrollment({ hasEnrolled }: { hasEnrolled: boolean }
                             </div>
                             
                             <div className="mt-6">
-                                <h3 className="text-sm font-bold text-[#111318] mb-2 uppercase tracking-wider">Instructions:</h3>
+                                <h3 className="text-sm font-bold text-[#111318] mb-2 uppercase tracking-wider">Instruksi:</h3>
                                 <ul className="text-sm text-[#6B6F76] space-y-2 list-disc pl-5">
-                                    <li>Ensure you are in a well-lit environment.</li>
-                                    <li>Remove masks, sunglasses, or anything covering your face.</li>
-                                    <li>Look directly at the camera and keep still when the box appears.</li>
-                                    <li>The system will automatically capture your face once it gets a clear read.</li>
+                                    <li>Pastikan Anda berada di tempat dengan pencahayaan terang.</li>
+                                    <li>Lepaskan masker, kacamata hitam, atau penutup wajah lainnya.</li>
+                                    <li>Ikuti instruksi di layar (Tegak, Senyum, Tengok Kiri/Kanan).</li>
+                                    <li>Sistem akan menggabungkan 4 pose wajah Anda untuk akurasi yang lebih tinggi saat absen.</li>
                                 </ul>
                             </div>
                         </div>
