@@ -44,7 +44,7 @@ export default function FaceScanner() {
     const canvasRef = useRef<HTMLCanvasElement>(null);
 
     const [isLoading, setIsLoading] = useState(true);
-    const [statusText, setStatusText] = useState('Initializing Scanner...');
+    const [statusText, setStatusText] = useState('Initializing Scanner v2...');
     const [stream, setStream] = useState<MediaStream | null>(null);
     const [faceMatcher, setFaceMatcher] = useState<faceapi.FaceMatcher | null>(null);
     const [logs, setLogs] = useState<LogEntry[]>([]);
