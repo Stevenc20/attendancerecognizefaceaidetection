@@ -90,50 +90,70 @@ export default function FaceEnrollment({ hasEnrolled }: { hasEnrolled: boolean }
         capturingRef.current = false;
         setStageIndex(0);
         
-        const detectInterval = setInterval(async () => {
-            if (!videoRef.current || !canvasRef.current || processing || data.embedding.length > 0) {
+        let isLooping = true;
+        
+        const detectFace = async () => {
+            if (!isLooping || !videoRef.current || !canvasRef.current || processing || data.embedding.length > 0) {
                 return;
             }
 
             const video = videoRef.current;
             const canvas = canvasRef.current;
             
-            const displaySize = { width: video.width, height: video.height };
+            if (video.videoWidth === 0 || video.videoHeight === 0) {
+                requestAnimationFrame(detectFace);
+                return;
+            }
+            
+            const displaySize = { width: video.videoWidth, height: video.videoHeight };
             faceapi.matchDimensions(canvas, displaySize);
 
-            const detection = await faceapi.detectSingleFace(video)
-                .withFaceLandmarks()
-                .withFaceDescriptor();
+            try {
+                const detection = await faceapi.detectSingleFace(video)
+                    .withFaceLandmarks()
+                    .withFaceDescriptor();
 
-            const ctx = canvas.getContext('2d');
-            ctx?.clearRect(0, 0, canvas.width, canvas.height);
+                const ctx = canvas.getContext('2d');
+                ctx?.clearRect(0, 0, canvas.width, canvas.height);
 
-            if (detection) {
-                const resizedDetections = faceapi.resizeResults(detection, displaySize);
-                faceapi.draw.drawDetections(canvas, resizedDetections);
-                
-                if (detection.detection.score > 0.85 && !capturingRef.current) {
-                    capturingRef.current = true;
-                    const currentDescriptors = [...descriptorsRef.current, detection.descriptor];
-                    descriptorsRef.current = currentDescriptors;
+                if (detection) {
+                    const resizedDetections = faceapi.resizeResults(detection, displaySize);
                     
-                    if (currentDescriptors.length >= STAGES.length) {
-                        setStatus('Proses selesai! Menyimpan data...');
-                        clearInterval(detectInterval);
-                        captureFaceData(currentDescriptors);
-                    } else {
-                        const nextStage = currentDescriptors.length;
-                        stageIndexRef.current = nextStage;
-                        setStageIndex(nextStage);
-                        setStatus(STAGES[nextStage].label);
+                    // Draw face landmarks (mesh) instead of static circle
+                    faceapi.draw.drawFaceLandmarks(canvas, resizedDetections);
+                    
+                    if (detection.detection.score > 0.85 && !capturingRef.current) {
+                        capturingRef.current = true;
+                        const currentDescriptors = [...descriptorsRef.current, detection.descriptor];
+                        descriptorsRef.current = currentDescriptors;
                         
-                        setTimeout(() => {
-                            capturingRef.current = false;
-                        }, 2000);
+                        if (currentDescriptors.length >= STAGES.length) {
+                            setStatus('Proses selesai! Menyimpan data...');
+                            isLooping = false;
+                            captureFaceData(currentDescriptors);
+                        } else {
+                            const nextStage = currentDescriptors.length;
+                            stageIndexRef.current = nextStage;
+                            setStageIndex(nextStage);
+                            setStatus(STAGES[nextStage].label);
+                            
+                            setTimeout(() => {
+                                capturingRef.current = false;
+                            }, 2000);
+                        }
                     }
                 }
+            } catch (err) {
+                console.error(err);
             }
-        }, 300);
+            
+            if (isLooping) {
+                // Use setTimeout to slightly throttle to ~15fps for performance, while keeping it much smoother than 3fps
+                setTimeout(() => requestAnimationFrame(detectFace), 50);
+            }
+        };
+
+        detectFace();
     };
 
     const captureFaceData = (capturedDescriptors: Float32Array[]) => {
@@ -226,29 +246,24 @@ export default function FaceEnrollment({ hasEnrolled }: { hasEnrolled: boolean }
                                     <video 
                                         ref={videoRef}
                                         onPlay={handleVideoPlay}
-                                        width="720" 
-                                        height="720" 
                                         autoPlay 
                                         muted
-                                        className="w-full h-full object-cover transform scale-x-[-1]"
+                                        className="absolute top-0 left-0 w-full h-full object-contain transform scale-x-[-1]"
                                     />
                                     <canvas 
                                         ref={canvasRef}
-                                        className="absolute top-0 left-0 w-full h-full transform scale-x-[-1]"
+                                        className="absolute top-0 left-0 w-full h-full object-contain transform scale-x-[-1] pointer-events-none"
                                     />
 
-                                    {/* Circle UI Overlay */}
+                                    {/* Text UI Overlay */}
                                     {!isLoading && !processing && isDetecting && (
-                                        <div className="absolute inset-0 z-10 pointer-events-none flex flex-col items-center justify-center">
-                                            <h2 className="text-white text-xl md:text-2xl font-bold bg-black/60 px-6 py-3 rounded-full mb-8 transition-all">
+                                        <div className="absolute inset-0 z-10 pointer-events-none flex flex-col items-center justify-end pb-12">
+                                            <h2 className={`text-white text-xl md:text-2xl font-bold px-6 py-3 rounded-full mb-4 transition-all shadow-lg ${
+                                                capturingRef.current ? 'bg-green-500' : 'bg-[#D40000]/90'
+                                            }`}>
                                                 {STAGES[stageIndex]?.label}
                                             </h2>
-                                            <div className={`w-64 h-64 md:w-80 md:h-80 rounded-full border-4 transition-all duration-500 ease-out ${
-                                                capturingRef.current 
-                                                    ? 'border-green-400 bg-green-400/20 scale-105 shadow-[0_0_40px_rgba(74,222,128,0.5)]' 
-                                                    : 'border-white/70 border-dashed animate-[spin_10s_linear_infinite]'
-                                            }`}></div>
-                                            <p className="text-white mt-8 bg-black/60 px-5 py-2 rounded-full text-base font-medium">
+                                            <p className="text-white bg-black/70 px-5 py-2 rounded-full text-base font-medium shadow-md">
                                                 {capturingRef.current ? 'Tertangkap! Bersiap ke pose berikutnya...' : STAGES[stageIndex]?.instruction}
                                             </p>
                                         </div>
