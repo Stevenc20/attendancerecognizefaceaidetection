@@ -227,7 +227,7 @@ return;
             faceapi.matchDimensions(canvas, displaySize);
 
             try {
-                // Use SsdMobilenetv1 for maximum accuracy and distance (detects smaller faces)
+                // Use SsdMobilenetv1 for maximum accuracy and stable bounding boxes
                 const detections = await faceapi.detectAllFaces(video, new faceapi.SsdMobilenetv1Options({ minConfidence: 0.5 }))
                     .withFaceLandmarks()
                     .withFaceDescriptors();
@@ -240,43 +240,43 @@ return;
                 const ctx = canvas.getContext('2d');
                 ctx?.clearRect(0, 0, canvas.width, canvas.height);
 
-                // We will draw custom boxes instead of default faceapi.draw
-                resizedDetections.forEach(detection => {
-                    const box = detection.detection.box;
-                    let drawColor = '#F05A00'; // Default Orange (Unrecognized)
-                    let labelText = 'Unknown';
-
-                    if (faceMatcher) {
-                        const bestMatch = faceMatcher.findBestMatch(detection.descriptor);
-                        
-                        if (bestMatch.label !== 'unknown' && bestMatch.distance < 0.55) {
-                            drawColor = '#10B981'; // Green (Recognized)
-                            const user = JSON.parse(bestMatch.label);
-                            labelText = user.name.split(' ')[0]; // First name
-
-                            processAttendance(user, bestMatch.distance);
-                        }
-                    }
-
-                    // Draw Box
-                    if (ctx) {
-                        ctx.strokeStyle = drawColor;
-                        ctx.lineWidth = 3;
-                        // Note: canvas is mirrored via CSS scale-x-[-1], so we must calculate mirror X
-                        const mirrorX = displaySize.width - box.x - box.width;
-                        
-                        ctx.strokeRect(mirrorX, box.y, box.width, box.height);
-                        
-                        // Draw Label
-                        ctx.fillStyle = drawColor;
-                        const textWidth = ctx.measureText(labelText).width;
-                        ctx.fillRect(mirrorX, box.y - 30, textWidth + 10, 30);
-                        
-                        ctx.fillStyle = '#ffffff';
-                        ctx.font = '18px Arial';
-                        ctx.fillText(labelText, mirrorX + 5, box.y - 10);
-                    }
-                });
+                  // We will draw standard faceapi boxes instead of custom drawing
+                  resizedDetections.forEach(detection => {
+                      const box = detection.detection.box;
+                      let drawColor = '#D40000'; // Red for Unrecognized/Unknown
+                      let labelText = 'Unknown';
+  
+                      if (faceMatcher) {
+                          const bestMatch = faceMatcher.findBestMatch(detection.descriptor);
+                          
+                          if (bestMatch.label !== 'unknown' && bestMatch.distance < 0.55) {
+                              drawColor = '#10B981'; // Green for Recognized
+                              const user = JSON.parse(bestMatch.label);
+                              labelText = user.name.split(' ')[0]; // First name
+  
+                              processAttendance(user, bestMatch.distance);
+                          }
+                      }
+  
+                      // We must mirror the X coordinate because the video is mirrored via CSS
+                      const mirrorX = displaySize.width - box.x - box.width;
+                      
+                      const mirroredBox = { 
+                          x: mirrorX, 
+                          y: box.y, 
+                          width: box.width, 
+                          height: box.height 
+                      };
+                      
+                      const drawOptions = {
+                          label: labelText,
+                          lineWidth: 3,
+                          boxColor: drawColor
+                      };
+                      
+                      const drawBox = new faceapi.draw.DrawBox(mirroredBox, drawOptions);
+                      drawBox.draw(canvas);
+                  });
             } catch (err) {
                 console.error("Face detection error:", err);
             }
@@ -438,7 +438,7 @@ return;
                     />
                     <canvas 
                         ref={canvasRef}
-                        className="absolute top-0 left-0 w-full h-full pointer-events-none z-20"
+                        className="absolute top-0 left-0 w-full h-full object-cover pointer-events-none z-20"
                     />
 
                     {/* HUD Overlay Graphics */}
