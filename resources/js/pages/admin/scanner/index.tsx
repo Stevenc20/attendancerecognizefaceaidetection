@@ -36,6 +36,8 @@ export default function FaceScanner() {
     const [faceMatcher, setFaceMatcher] = useState<faceapi.FaceMatcher | null>(null);
     const [logs, setLogs] = useState<LogEntry[]>([]);
     const [isFullscreen, setIsFullscreen] = useState(false);
+    const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
+    const [selectedDeviceId, setSelectedDeviceId] = useState<string>('');
     
     // To prevent spamming the backend for the same person standing in front
     const lastRecognizedRef = useRef<{ [key: string]: number }>({});
@@ -44,6 +46,15 @@ export default function FaceScanner() {
     useEffect(() => {
         logsRef.current = logs;
     }, [logs]);
+
+    useEffect(() => {
+        navigator.mediaDevices.enumerateDevices()
+            .then(devices => {
+                const videoDevices = devices.filter(d => d.kind === 'videoinput');
+                setDevices(videoDevices);
+            })
+            .catch(err => console.error("Error enumerating devices", err));
+    }, []);
 
     useEffect(() => {
         const initializeScanner = async () => {
@@ -94,11 +105,19 @@ export default function FaceScanner() {
         };
     }, []);
 
-    const startCamera = async () => {
+    const startCamera = async (deviceId?: string) => {
         try {
-            const mediaStream = await navigator.mediaDevices.getUserMedia({ 
-                video: { width: 1280, height: 720, facingMode: 'user' } 
-            });
+            if (videoRef.current && videoRef.current.srcObject) {
+                const existingStream = videoRef.current.srcObject as MediaStream;
+                existingStream.getTracks().forEach(track => track.stop());
+            }
+
+            const constraints: MediaStreamConstraints = { 
+                video: deviceId 
+                    ? { deviceId: { exact: deviceId }, width: 1280, height: 720 } 
+                    : { width: 1280, height: 720, facingMode: 'user' } 
+            };
+            const mediaStream = await navigator.mediaDevices.getUserMedia(constraints);
             setStream(mediaStream);
             if (videoRef.current) {
                 videoRef.current.srcObject = mediaStream;
@@ -108,6 +127,13 @@ export default function FaceScanner() {
             console.error("Error accessing camera", err);
             setStatusText("Cannot access camera. Please allow permissions.");
         }
+    };
+
+    const handleDeviceChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+        const deviceId = e.target.value;
+        setSelectedDeviceId(deviceId);
+        setIsLoading(true);
+        startCamera(deviceId);
     };
 
     const handleVideoPlay = () => {
@@ -256,6 +282,20 @@ export default function FaceScanner() {
                 </div>
 
                 <div className="flex items-center gap-4">
+                    {devices.length > 0 && (
+                        <select 
+                            className="text-sm font-medium text-white/70 bg-white/10 px-3 py-1.5 rounded-lg border border-white/20 focus:outline-none focus:ring-2 focus:ring-white/30"
+                            value={selectedDeviceId}
+                            onChange={handleDeviceChange}
+                        >
+                            <option value="" className="text-black">Default Camera</option>
+                            {devices.map(device => (
+                                <option key={device.deviceId} value={device.deviceId} className="text-black">
+                                    {device.label || `Camera ${device.deviceId.substring(0,5)}`}
+                                </option>
+                            ))}
+                        </select>
+                    )}
                     <span className="text-sm font-medium text-white/70 bg-white/5 px-3 py-1.5 rounded-full border border-white/10">
                         {statusText}
                     </span>

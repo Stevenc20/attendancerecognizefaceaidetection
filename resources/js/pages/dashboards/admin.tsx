@@ -2,7 +2,7 @@ import { Head, usePage } from '@inertiajs/react';
 import DashboardLayout from '@/layouts/dashboard-layout';
 import { ArrowUpRight, Camera, Smartphone } from 'lucide-react';
 
-export default function AdminDashboard() {
+export default function AdminDashboard({ metrics, recentActivity }: { metrics: any[], recentActivity: any[] }) {
     const { auth } = usePage().props as any;
     const user = auth.user;
     const role = user.role || 'admin';
@@ -10,27 +10,7 @@ export default function AdminDashboard() {
     const hour = new Date().getHours();
     const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
 
-    const metrics = [
-        { id: 'Students', value: '850', sub: 'Total enrolled students' },
-        { id: 'Present', value: '792', sub: '93.2% of total students' },
-        { id: 'Late', value: '45', sub: '5.3% of total students' },
-        { id: 'Absent', value: '13', sub: '1.5% of total students' },
-    ];
-
-    const activeSessions = [
-        { name: 'Morning Session', time: '06:30 – 07:30', present: 738, total: 850, status: 'Active' },
-        { name: 'Late Session', time: '07:30 – 08:00', present: 54, total: 112, status: 'Active' },
-    ];
-
-    const recentActivity = [
-        { time: '07:05', name: 'Budi Santoso', cls: 'XII RPL 1', status: 'Present', method: 'Face' },
-        { time: '07:12', name: 'Siti Aminah', cls: 'XI TKJ 2', status: 'Present', method: 'QR' },
-        { time: '07:35', name: 'Ahmad Faisal', cls: 'X MM 1', status: 'Late', method: 'Face' },
-        { time: '07:40', name: 'Dewi Lestari', cls: 'XII RPL 2', status: 'Late', method: 'Face' },
-        { time: '07:45', name: 'Rizki Aditya', cls: 'XI TKJ 1', status: 'Present', method: 'QR' },
-        { time: '07:48', name: 'Putri Handayani', cls: 'X RPL 1', status: 'Present', method: 'Face' },
-        { time: '07:52', name: 'Dimas Prasetyo', cls: 'XII DKV 1', status: 'Present', method: 'Face' },
-    ];
+    const activeSessions: any[] = []; // Hidden for now
 
     const shortcuts = ['Add Student', 'Create Session', 'View Reports', 'Security Alerts'];
 
@@ -67,46 +47,48 @@ export default function AdminDashboard() {
                 ))}
             </div>
 
-            {/* ── ACTIVE SESSIONS ── */}
-            <section className="bg-white rounded-xl shadow-sm border border-gray-100 mb-6 overflow-hidden flex flex-col">
-                <div className="p-4 border-b border-gray-50 bg-gray-50/50 flex items-center justify-between">
-                    <span className="text-[12px] font-semibold text-[#111318] uppercase tracking-wider">Active Sessions</span>
-                </div>
-                <div className="flex-1 overflow-x-auto">
-                    <table className="w-full text-left border-collapse">
-                        <tbody>
-                            {activeSessions.map((s, i) => {
-                                const pct = Math.round((s.present / s.total) * 100);
-                                return (
-                                    <tr key={i} className="border-b border-gray-50 last:border-0 hover:bg-gray-50/50 transition-colors">
-                                        <td className="py-4 px-5">
-                                            <div className="text-[14px] font-semibold text-[#111318] mb-1">{s.name}</div>
-                                            <div className="text-[12px] text-[#6B6F76]">{s.time}</div>
-                                        </td>
-                                        <td className="py-4 px-5 w-1/3">
-                                            <div className="flex items-center justify-between mb-2">
-                                                <span className="text-[13px] font-semibold text-[#111318] tabular-nums">
-                                                    {s.present} <span className="text-[#6B6F76] font-normal">/ {s.total}</span>
+            {/* ACTIVE SESSIONS - Hidden until feature is built */}
+            {activeSessions.length > 0 && (
+                <section className="bg-white rounded-xl shadow-sm border border-gray-100 mb-6 overflow-hidden flex flex-col">
+                    <div className="p-4 border-b border-gray-50 bg-gray-50/50 flex items-center justify-between">
+                        <span className="text-[12px] font-semibold text-[#111318] uppercase tracking-wider">Active Sessions</span>
+                    </div>
+                    <div className="flex-1 overflow-x-auto">
+                        <table className="w-full text-left border-collapse">
+                            <tbody>
+                                {activeSessions.map((s, i) => {
+                                    const pct = Math.round((s.present / s.total) * 100);
+                                    return (
+                                        <tr key={i} className="border-b border-gray-50 last:border-0 hover:bg-gray-50/50 transition-colors">
+                                            <td className="py-4 px-5">
+                                                <div className="text-[14px] font-semibold text-[#111318] mb-1">{s.name}</div>
+                                                <div className="text-[12px] text-[#6B6F76]">{s.time}</div>
+                                            </td>
+                                            <td className="py-4 px-5 w-1/3">
+                                                <div className="flex items-center justify-between mb-2">
+                                                    <span className="text-[13px] font-semibold text-[#111318] tabular-nums">
+                                                        {s.present} <span className="text-[#6B6F76] font-normal">/ {s.total}</span>
+                                                    </span>
+                                                    <span className="text-[12px] font-bold text-[#111318] tabular-nums">{pct}%</span>
+                                                </div>
+                                                <div className="h-[4px] bg-gray-200 rounded-full overflow-hidden">
+                                                    <div className="h-full bg-[#111318] rounded-full transition-all" style={{ width: `${pct}%` }} />
+                                                </div>
+                                            </td>
+                                            <td className="py-4 px-5 text-right">
+                                                <span className="inline-flex items-center gap-1.5 text-[10px] font-semibold text-emerald-600 uppercase tracking-wider bg-emerald-50 border border-emerald-100 px-2.5 py-1 rounded-full">
+                                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                                                    {s.status}
                                                 </span>
-                                                <span className="text-[12px] font-bold text-[#111318] tabular-nums">{pct}%</span>
-                                            </div>
-                                            <div className="h-[4px] bg-gray-200 rounded-full overflow-hidden">
-                                                <div className="h-full bg-[#111318] rounded-full transition-all" style={{ width: `${pct}%` }} />
-                                            </div>
-                                        </td>
-                                        <td className="py-4 px-5 text-right">
-                                            <span className="inline-flex items-center gap-1.5 text-[10px] font-semibold text-emerald-600 uppercase tracking-wider bg-emerald-50 border border-emerald-100 px-2.5 py-1 rounded-full">
-                                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                                                {s.status}
-                                            </span>
-                                        </td>
-                                    </tr>
-                                );
-                            })}
-                        </tbody>
-                    </table>
-                </div>
-            </section>
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+            )}
 
             {/* ── RECENT ACTIVITY ── */}
             <section className="bg-white rounded-xl shadow-sm border border-gray-100 mb-6 overflow-hidden flex flex-col">
