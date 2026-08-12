@@ -20,6 +20,9 @@ RUN apt-get update && apt-get install -y \
 # Enable Apache Mod Rewrite
 RUN a2enmod rewrite
 
+# Increase PHP upload limits
+RUN echo "upload_max_filesize = 50M\npost_max_size = 50M" > /usr/local/etc/php/conf.d/uploads.ini
+
 # Install Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
