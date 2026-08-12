@@ -13,6 +13,8 @@ services:
       - ./.env:/var/www/html/.env
       # PENTING: Mount folder storage jika butuh file gambar awet walaupun container dihapus
       - ./storage/app/public:/var/www/html/storage/app/public
+      # Agar hasil git pull (public/build) langsung aktif tanpa rebuild image
+      - ./public/build:/var/www/html/public/build
     networks:
       - patpul_db_network
 
