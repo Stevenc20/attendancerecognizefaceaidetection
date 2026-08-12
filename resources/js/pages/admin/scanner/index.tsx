@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Head, Link } from '@inertiajs/react';
 import * as faceapi from '@vladmandic/face-api';
-import { Camera, CheckCircle, Loader2, Maximize, AlertCircle, XCircle } from 'lucide-react';
+import { Camera, CheckCircle, Loader2, Maximize, AlertCircle, XCircle, Sun, Moon } from 'lucide-react';
 
 // Type definitions
 type FaceEmbedding = {
@@ -38,10 +38,12 @@ export default function FaceScanner() {
     const [isFullscreen, setIsFullscreen] = useState(false);
     const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
     const [selectedDeviceId, setSelectedDeviceId] = useState<string>('');
+    const [theme, setTheme] = useState<'dark'|'light'>('light');
     
     // To prevent spamming the backend for the same person standing in front
     const lastRecognizedRef = useRef<{ [key: string]: number }>({});
     const logsRef = useRef<LogEntry[]>([]);
+    const detectLoopIdRef = useRef<number>(0);
     
     useEffect(() => {
         logsRef.current = logs;
@@ -137,65 +139,83 @@ export default function FaceScanner() {
     };
 
     const handleVideoPlay = () => {
-        const detectInterval = setInterval(async () => {
+        // Increment loop ID to kill any existing loops
+        const currentLoopId = ++detectLoopIdRef.current;
+
+        const detectLoop = async () => {
+            // Check if this loop is still the active one
+            if (detectLoopIdRef.current !== currentLoopId) return;
             if (!videoRef.current || !canvasRef.current) return;
 
             const video = videoRef.current;
             const canvas = canvasRef.current;
             
             const displaySize = { width: video.videoWidth, height: video.videoHeight };
-            if (displaySize.width === 0) return;
+            if (displaySize.width === 0) {
+                setTimeout(detectLoop, 200);
+                return;
+            }
             
             faceapi.matchDimensions(canvas, displaySize);
 
-            // Detect all faces
-            const detections = await faceapi.detectAllFaces(video)
-                .withFaceLandmarks()
-                .withFaceDescriptors();
+            try {
+                // Detect all faces
+                const detections = await faceapi.detectAllFaces(video)
+                    .withFaceLandmarks()
+                    .withFaceDescriptors();
 
-            const resizedDetections = faceapi.resizeResults(detections, displaySize);
-            const ctx = canvas.getContext('2d');
-            ctx?.clearRect(0, 0, canvas.width, canvas.height);
+                if (detectLoopIdRef.current !== currentLoopId) return; // double check after await
 
-            // We will draw custom boxes instead of default faceapi.draw
-            resizedDetections.forEach(detection => {
-                const box = detection.detection.box;
-                let drawColor = '#F05A00'; // Default Orange (Unrecognized)
-                let labelText = 'Unknown';
+                const resizedDetections = faceapi.resizeResults(detections, displaySize);
+                const ctx = canvas.getContext('2d');
+                ctx?.clearRect(0, 0, canvas.width, canvas.height);
 
-                if (faceMatcher) {
-                    const bestMatch = faceMatcher.findBestMatch(detection.descriptor);
-                    
-                    if (bestMatch.label !== 'unknown' && bestMatch.distance < 0.45) {
-                        drawColor = '#10B981'; // Green (Recognized)
-                        const user = JSON.parse(bestMatch.label);
-                        labelText = user.name.split(' ')[0]; // First name
+                // We will draw custom boxes instead of default faceapi.draw
+                resizedDetections.forEach(detection => {
+                    const box = detection.detection.box;
+                    let drawColor = '#F05A00'; // Default Orange (Unrecognized)
+                    let labelText = 'Unknown';
 
-                        processAttendance(user, bestMatch.distance);
+                    if (faceMatcher) {
+                        const bestMatch = faceMatcher.findBestMatch(detection.descriptor);
+                        
+                        if (bestMatch.label !== 'unknown' && bestMatch.distance < 0.45) {
+                            drawColor = '#10B981'; // Green (Recognized)
+                            const user = JSON.parse(bestMatch.label);
+                            labelText = user.name.split(' ')[0]; // First name
+
+                            processAttendance(user, bestMatch.distance);
+                        }
                     }
-                }
 
-                // Draw Box
-                if (ctx) {
-                    ctx.strokeStyle = drawColor;
-                    ctx.lineWidth = 3;
-                    // Note: canvas is mirrored via CSS scale-x-[-1], so we must calculate mirror X
-                    const mirrorX = displaySize.width - box.x - box.width;
-                    
-                    ctx.strokeRect(mirrorX, box.y, box.width, box.height);
-                    
-                    // Draw Label
-                    ctx.fillStyle = drawColor;
-                    const textWidth = ctx.measureText(labelText).width;
-                    ctx.fillRect(mirrorX, box.y - 30, textWidth + 10, 30);
-                    
-                    ctx.fillStyle = '#ffffff';
-                    ctx.font = '18px Arial';
-                    ctx.fillText(labelText, mirrorX + 5, box.y - 10);
-                }
-            });
+                    // Draw Box
+                    if (ctx) {
+                        ctx.strokeStyle = drawColor;
+                        ctx.lineWidth = 3;
+                        // Note: canvas is mirrored via CSS scale-x-[-1], so we must calculate mirror X
+                        const mirrorX = displaySize.width - box.x - box.width;
+                        
+                        ctx.strokeRect(mirrorX, box.y, box.width, box.height);
+                        
+                        // Draw Label
+                        ctx.fillStyle = drawColor;
+                        const textWidth = ctx.measureText(labelText).width;
+                        ctx.fillRect(mirrorX, box.y - 30, textWidth + 10, 30);
+                        
+                        ctx.fillStyle = '#ffffff';
+                        ctx.font = '18px Arial';
+                        ctx.fillText(labelText, mirrorX + 5, box.y - 10);
+                    }
+                });
+            } catch (err) {
+                console.error("Face detection error:", err);
+            }
 
-        }, 200); // 5 FPS is enough for attendance
+            // Schedule next frame
+            setTimeout(detectLoop, 200);
+        };
+
+        detectLoop();
     };
 
     const processAttendance = (user: FaceEmbedding['user'], distance: number) => {
@@ -266,25 +286,25 @@ export default function FaceScanner() {
     };
 
     return (
-        <div className="bg-[#080B1A] min-h-screen text-white font-sans overflow-hidden flex flex-col">
-            <Head title="Live Scanner — SMKN 40" />
+        <div className={`${theme === 'dark' ? 'bg-[#080B1A] text-white' : 'bg-gray-100 text-gray-900'} min-h-screen font-sans overflow-hidden flex flex-col transition-colors duration-300`}>
+            <Head title="Live Scanner - SMKN 40" />
 
             {/* Topbar */}
-            <header className="px-6 py-4 flex justify-between items-center bg-black/30 backdrop-blur-md z-50 border-b border-white/10 relative">
+            <header className={`px-6 py-4 flex justify-between items-center z-50 border-b relative transition-colors duration-300 ${theme === 'dark' ? 'bg-black/30 backdrop-blur-md border-white/10' : 'bg-white shadow-sm border-gray-200'}`}>
                 <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center">
-                        <Camera className="text-[#080B1A]" size={20} />
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center ${theme === 'dark' ? 'bg-white text-[#080B1A]' : 'bg-[#D40000] text-white'}`}>
+                        <Camera size={20} />
                     </div>
                     <div>
                         <h1 className="text-lg font-bold tracking-tight">SMKN 40 LIVE SCANNER</h1>
-                        <p className="text-xs text-white/50 uppercase tracking-widest">{new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
+                        <p className={`text-xs uppercase tracking-widest ${theme === 'dark' ? 'text-white/50' : 'text-gray-500'}`}>{new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
                     </div>
                 </div>
 
                 <div className="flex items-center gap-4">
                     {devices.length > 0 && (
                         <select 
-                            className="text-sm font-medium text-white/70 bg-white/10 px-3 py-1.5 rounded-lg border border-white/20 focus:outline-none focus:ring-2 focus:ring-white/30"
+                            className={`text-sm font-medium px-3 py-1.5 rounded-lg border focus:outline-none focus:ring-2 ${theme === 'dark' ? 'text-white/70 bg-white/10 border-white/20 focus:ring-white/30' : 'text-gray-700 bg-gray-50 border-gray-300 focus:ring-red-500/30'}`}
                             value={selectedDeviceId}
                             onChange={handleDeviceChange}
                         >
@@ -296,17 +316,24 @@ export default function FaceScanner() {
                             ))}
                         </select>
                     )}
-                    <span className="text-sm font-medium text-white/70 bg-white/5 px-3 py-1.5 rounded-full border border-white/10">
+                    <span className={`text-sm font-medium px-3 py-1.5 rounded-full border ${theme === 'dark' ? 'text-white/70 bg-white/5 border-white/10' : 'text-gray-700 bg-gray-100 border-gray-200'}`}>
                         {statusText}
                     </span>
                     <button 
+                        onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+                        className={`p-2 rounded-full transition-colors ${theme === 'dark' ? 'bg-white/10 hover:bg-white/20 text-white' : 'bg-gray-100 hover:bg-gray-200 text-gray-700'}`}
+                        title="Toggle Theme"
+                    >
+                        {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+                    </button>
+                    <button 
                         onClick={toggleFullscreen}
-                        className="p-2 bg-white/10 hover:bg-white/20 rounded-full transition-colors"
+                        className={`p-2 rounded-full transition-colors ${theme === 'dark' ? 'bg-white/10 hover:bg-white/20 text-white' : 'bg-gray-100 hover:bg-gray-200 text-gray-700'}`}
                         title="Toggle Fullscreen"
                     >
                         <Maximize size={18} />
                     </button>
-                    <Link href="/admin/dashboard" className="p-2 bg-red-500/20 text-red-400 hover:bg-red-500 hover:text-white rounded-full transition-colors">
+                    <Link href="/admin/dashboard" className="p-2 bg-red-500/20 text-red-500 hover:bg-red-500 hover:text-white rounded-full transition-colors">
                         <XCircle size={18} />
                     </Link>
                 </div>
@@ -315,7 +342,7 @@ export default function FaceScanner() {
             {/* Main Content */}
             <div className="flex-1 flex relative">
                 {/* Camera Area */}
-                <div className="flex-1 relative bg-black flex items-center justify-center overflow-hidden">
+                <div className={`flex-1 relative flex items-center justify-center overflow-hidden ${theme === 'dark' ? 'bg-black' : 'bg-gray-200'}`}>
                     {isLoading && (
                         <div className="absolute inset-0 flex flex-col items-center justify-center z-10">
                             <Loader2 className="animate-spin text-white mb-4" size={48} />
@@ -354,9 +381,9 @@ export default function FaceScanner() {
                 </div>
 
                 {/* Sidebar Log */}
-                <div className="w-80 bg-[#111318] border-l border-white/10 flex flex-col relative z-40">
-                    <div className="p-4 border-b border-white/10 bg-black/20">
-                        <h2 className="text-sm font-bold uppercase tracking-wider text-white/80 flex items-center gap-2">
+                <div className={`w-80 border-l flex flex-col relative z-40 transition-colors duration-300 ${theme === 'dark' ? 'bg-[#111318] border-white/10' : 'bg-white border-gray-200'}`}>
+                    <div className={`p-4 border-b ${theme === 'dark' ? 'bg-black/20 border-white/10' : 'bg-gray-50 border-gray-200'}`}>
+                        <h2 className={`text-sm font-bold uppercase tracking-wider flex items-center gap-2 ${theme === 'dark' ? 'text-white/80' : 'text-gray-700'}`}>
                             <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
                             Activity Log
                         </h2>
@@ -364,27 +391,28 @@ export default function FaceScanner() {
                     
                     <div className="flex-1 overflow-y-auto p-4 space-y-3">
                         {logs.length === 0 ? (
-                            <div className="text-center text-white/30 text-sm mt-10">
+                            <div className={`text-center text-sm mt-10 ${theme === 'dark' ? 'text-white/30' : 'text-gray-400'}`}>
                                 Waiting for faces...
                             </div>
                         ) : (
                             logs.map((log) => (
-                                <div key={log.id} className="bg-white/5 border border-white/10 rounded-xl p-3 transform transition-all duration-300 animate-in fade-in slide-in-from-right-4">
+                                <div key={log.id} className={`border rounded-xl p-3 transform transition-all duration-300 animate-in fade-in slide-in-from-right-4 ${theme === 'dark' ? 'bg-white/5 border-white/10' : 'bg-white border-gray-200 shadow-sm'}`}>
                                     <div className="flex justify-between items-start mb-2">
-                                        <span className="text-xs font-mono text-white/50">{log.time}</span>
-                                        {log.status === 'success' && <CheckCircle className="text-emerald-400" size={14} />}
-                                        {log.status === 'already' && <CheckCircle className="text-amber-400" size={14} />}
-                                        {log.status === 'error' && <AlertCircle className="text-red-400" size={14} />}
+                                        <span className={`text-xs font-mono ${theme === 'dark' ? 'text-white/50' : 'text-gray-500'}`}>{log.time}</span>
+                                        {log.status === 'success' && <CheckCircle className="text-emerald-500" size={14} />}
+                                        {log.status === 'already' && <CheckCircle className="text-amber-500" size={14} />}
+                                        {log.status === 'error' && <AlertCircle className="text-red-500" size={14} />}
                                     </div>
-                                    <div className="font-bold text-sm text-white mb-1">{log.user.name}</div>
+                                    <div className={`font-bold text-sm mb-1 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{log.user.name}</div>
                                     {log.user.classroom && (
-                                        <div className="text-xs text-white/60">
+                                        <div className={`text-xs ${theme === 'dark' ? 'text-white/60' : 'text-gray-500'}`}>
                                             {log.user.classroom.name} • {log.user.classroom.major.code}
                                         </div>
                                     )}
-                                    <div className={`text-[10px] uppercase tracking-wider font-bold mt-2 ${
-                                        log.status === 'success' ? 'text-emerald-400' :
-                                        log.status === 'already' ? 'text-amber-400' : 'text-red-400'
+                                    <div className={`mt-2 text-xs font-medium px-2 py-1 rounded inline-block ${
+                                        log.status === 'success' ? (theme === 'dark' ? 'bg-emerald-500/20 text-emerald-300' : 'bg-emerald-100 text-emerald-700') :
+                                        log.status === 'already' ? (theme === 'dark' ? 'bg-amber-500/20 text-amber-300' : 'bg-amber-100 text-amber-700') :
+                                        (theme === 'dark' ? 'bg-red-500/20 text-red-300' : 'bg-red-100 text-red-700')
                                     }`}>
                                         {log.message}
                                     </div>
