@@ -1,36 +1,77 @@
-import React from 'react';
 import { Head, usePage } from '@inertiajs/react';
 import DashboardLayout from '@/layouts/dashboard-layout';
-import { Smartphone } from 'lucide-react';
+import { Fingerprint, Smartphone, Laptop, PlusCircle } from 'lucide-react';
 
-export default function MyDevice() {
-    const { auth } = usePage().props as any;
+export default function StudentDevice() {
+    const { auth, devices } = usePage().props as any;
 
     return (
         <DashboardLayout role="student" userName={auth.user.name}>
-            <Head title="My Device — SMKN 40" />
+            <Head title="My Device" />
 
-            <header className="mb-8">
-                <p className="text-[12px] font-medium text-[#6B6F76] uppercase tracking-[0.1em] mb-1">
-                    Student Portal
-                </p>
-                <h1 className="font-bold text-[#111318] leading-tight tracking-tight" style={{ fontSize: 'clamp(2rem, 1.5rem + 2vw, 2.5rem)' }}>
-                    My Device.
-                </h1>
-                <p className="text-[14px] text-[#6B6F76] font-medium mt-1">
-                    Manage your registered device for QR attendance.
-                </p>
+            <header className="mb-6 flex flex-col md:flex-row md:items-end justify-between gap-4">
+                <div>
+                    <p className="text-[12px] font-medium text-[#6B6F76] uppercase tracking-[0.1em] mb-1">
+                        Modules
+                    </p>
+                    <h1 className="font-bold text-[#111318] leading-tight tracking-tight text-3xl">
+                        My Device (Passkey)
+                    </h1>
+                </div>
+                
+                <button className="inline-flex items-center gap-2 bg-[#D40000] hover:bg-[#8E0010] text-white px-5 py-2.5 rounded-lg text-sm font-semibold transition-colors">
+                    <PlusCircle size={18} />
+                    Register New Device
+                </button>
             </header>
 
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden flex flex-col items-center justify-center py-24 text-center">
-                <div className="bg-gray-50 h-16 w-16 rounded-full flex items-center justify-center mb-4">
-                    <Smartphone className="text-gray-400" size={24} />
+            <section className="bg-white rounded-xl shadow-sm border border-gray-100 flex flex-col overflow-hidden mb-6">
+                <div className="p-5 border-b border-gray-50 bg-gray-50/50 flex flex-col sm:flex-row justify-between items-center gap-4">
+                    <div>
+                        <h2 className="text-xl font-bold text-[#111318]">Registered Biometrics</h2>
+                        <p className="text-sm text-[#6B6F76] mt-1">Manage devices allowed to login without a password.</p>
+                    </div>
                 </div>
-                <h2 className="text-[#111318] font-bold text-lg mb-2">Coming Soon</h2>
-                <p className="text-[#6B6F76] text-sm max-w-sm mx-auto">
-                    The Device management module is currently under construction. Please check back later.
-                </p>
-            </div>
+                
+                <div className="divide-y divide-gray-50">
+                    {devices && devices.length > 0 ? (
+                        devices.map((device: any) => {
+                            const isMobile = device.name?.toLowerCase().includes('phone') || device.name?.toLowerCase().includes('mobile');
+                            return (
+                                <div key={device.id} className="p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-gray-50/50 transition-colors">
+                                    <div className="flex gap-4">
+                                        <div className="flex-shrink-0 w-12 h-12 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center">
+                                            {isMobile ? <Smartphone size={24} /> : <Laptop size={24} />}
+                                        </div>
+                                        <div>
+                                            <h3 className="font-bold text-[#111318] text-lg mb-1">{device.name}</h3>
+                                            <p className="text-sm text-[#6B6F76] flex items-center gap-1.5">
+                                                <Fingerprint size={14} /> Passkey Credential
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <div className="text-left sm:text-right">
+                                        <p className="text-xs font-semibold text-[#6B6F76] uppercase tracking-wider mb-1">Added On</p>
+                                        <p className="text-sm font-medium text-[#111318]">
+                                            {new Date(device.created_at).toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric' })}
+                                        </p>
+                                    </div>
+                                </div>
+                            );
+                        })
+                    ) : (
+                        <div className="py-16 text-center flex flex-col items-center justify-center">
+                            <div className="w-20 h-20 rounded-full bg-gray-50 flex items-center justify-center mb-4 border border-gray-100">
+                                <Fingerprint className="text-gray-400" size={32} />
+                            </div>
+                            <h3 className="text-lg font-bold text-[#111318] mb-2">No Devices Registered</h3>
+                            <p className="text-sm text-[#6B6F76] max-w-sm mb-6">
+                                You haven't registered any biometric devices yet. Register your phone or laptop to enable fast and secure passwordless login.
+                            </p>
+                        </div>
+                    )}
+                </div>
+            </section>
         </DashboardLayout>
     );
 }

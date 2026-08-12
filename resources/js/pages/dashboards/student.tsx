@@ -1,199 +1,167 @@
-import { Head, usePage, Link } from '@inertiajs/react';
+import React from 'react';
+import { Head, Link, usePage } from '@inertiajs/react';
 import DashboardLayout from '@/layouts/dashboard-layout';
-import { Camera, Smartphone, ArrowUpRight } from 'lucide-react';
+import { CheckCircle, XCircle, Clock, ShieldCheck, QrCode, Fingerprint, CalendarCheck } from 'lucide-react';
 
-export default function StudentDashboard({ hasEnrolled }: { hasEnrolled: boolean }) {
-    const { auth } = usePage().props as any;
-    const user = auth.user;
-    const role = user.role || 'student';
+export default function StudentDashboard() {
+    const { auth, hasEnrolled, hasPasskey, stats, todayRecord, recentAttendances } = usePage().props as any;
 
-    const hour = new Date().getHours();
-    const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
-
-    const todayStatus = { status: 'Present', time: '07:15', method: 'Face Recognition' };
-
-    const metrics = [
-        { id: 'Attendance Rate', value: '92%', sub: 'Current semester' },
-        { id: 'Total Present', value: '45', sub: 'Days attended' },
-        { id: 'Total Absent', value: '4', sub: 'Days missed' },
-    ];
-
-    const recentAttendance = [
-        { date: 'Today, 11 Aug', time: '07:15', status: 'Present', method: 'Face' },
-        { date: 'Fri, 08 Aug', time: '07:10', status: 'Present', method: 'Face' },
-        { date: 'Thu, 07 Aug', time: '07:05', status: 'Present', method: 'QR' },
-        { date: 'Wed, 06 Aug', time: '07:45', status: 'Late', method: 'Face' },
-        { date: 'Tue, 05 Aug', time: '—', status: 'Absent', method: '—' },
-        { date: 'Mon, 04 Aug', time: '07:20', status: 'Present', method: 'Face' },
-        { date: 'Fri, 01 Aug', time: '07:18', status: 'Present', method: 'QR' },
-    ];
-
-    const shortcuts = ['Attendance History', 'My Profile', 'My Device'];
+    const currentMonth = new Date().toLocaleString('en-US', { month: 'long', year: 'numeric' });
 
     return (
-        <DashboardLayout role={role} userName={user.name}>
-            <Head title="Student — SMKN 40" />
+        <DashboardLayout role="student" userName={auth.user.name}>
+            <Head title="Student Dashboard" />
 
-            {/* ── HEADER ── */}
-            <header className="mb-6">
-                <p className="text-[12px] font-medium text-[#6B6F76] uppercase tracking-[0.1em] mb-1">
-                    Student Portal
-                </p>
-                <h1 className="font-bold text-[#111318] leading-tight tracking-tight" style={{ fontSize: 'clamp(2rem, 1.5rem + 2vw, 2.5rem)' }}>
-                    {greeting}, {user.name}.
-                </h1>
-                <p className="text-[14px] text-[#6B6F76] font-medium mt-1">
-                    XII RPL 1
-                </p>
-            </header>
-
-            {/* ── TODAY'S STATUS (Hero) ── */}
-            <section className="bg-white rounded-xl shadow-sm border border-gray-100 mb-6 overflow-hidden">
-                <div className="p-5 border-b border-gray-50 flex items-center justify-between bg-gray-50/50">
-                    <span className="text-[12px] font-semibold text-[#111318] uppercase tracking-wider">
-                        Today's Status
-                    </span>
+            {/* Welcome Banner */}
+            <div className="bg-gradient-to-r from-blue-50 to-white rounded-xl shadow-sm border border-blue-100 p-8 mb-6 flex flex-col md:flex-row items-center justify-between gap-6 transition-all hover:shadow-md">
+                <div>
+                    <h1 className="text-[#111318] font-bold text-2xl md:text-3xl mb-2">Welcome back, {auth.user.name}!</h1>
+                    <p className="text-[#6B6F76]">Here is your attendance summary for {currentMonth}.</p>
                 </div>
-
-                <div className="p-6 md:p-8 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                    <div className="flex items-center gap-4">
-                        <div className={`w-3 h-3 rounded-full flex-shrink-0 ${
-                            todayStatus.status === 'Present' ? 'bg-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.5)] animate-pulse' : 
-                            todayStatus.status === 'Late' ? 'bg-[#F05A00] shadow-[0_0_12px_rgba(240,90,0,0.5)]' : 'bg-[#D40000]'
-                        }`} />
-                        <span className="font-bold text-[#111318] leading-none tracking-tight uppercase" style={{ fontSize: 'clamp(2.5rem, 2rem + 2vw, 3.5rem)' }}>
-                            {todayStatus.status}
-                        </span>
-                    </div>
-                    <div className="flex items-center gap-4 text-[13px] font-medium text-[#6B6F76] bg-gray-50 px-4 py-2.5 rounded-lg border border-gray-100">
-                        <span className="tabular-nums flex items-center gap-2">
-                            <div className="w-1.5 h-1.5 rounded-full bg-gray-300" />
-                            Recorded at {todayStatus.time}
-                        </span>
-                        <div className="w-px h-4 bg-gray-200" />
-                        <span className="flex items-center gap-1.5 text-[#111318]">
-                            {todayStatus.method === 'Face Recognition' ? <Camera size={14} className="text-[#6B6F76]" /> : <Smartphone size={14} className="text-[#6B6F76]" />}
-                            {todayStatus.method}
-                        </span>
-                    </div>
+                <div className="text-right">
+                    <p className="text-sm font-medium text-[#6B6F76] uppercase tracking-wider mb-1">Today's Date</p>
+                    <p className="font-bold text-[#111318] text-xl">
+                        {new Date().toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+                    </p>
                 </div>
-            </section>
-
-            {/* ── METRICS ── */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                {metrics.map((m, i) => (
-                    <div key={i} className="bg-white rounded-xl p-5 shadow-sm border border-gray-100 flex flex-col justify-between">
-                        <div className="text-[11px] font-semibold text-[#6B6F76] uppercase tracking-wider mb-2">{m.id}</div>
-                        <div className="font-bold text-[#111318] tabular-nums leading-none mb-1.5" style={{ fontSize: 'clamp(1.75rem, 1.5rem + 1vw, 2.25rem)' }}>
-                            {m.value}
-                        </div>
-                        <div className="text-[11px] text-[#6B6F76]">{m.sub}</div>
-                    </div>
-                ))}
             </div>
 
-            {/* ── TWO-COLUMN GRID ── */}
-            <section className="grid grid-cols-1 lg:grid-cols-5 gap-6 mb-6">
+            {/* Main Content Grid */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
                 
-                {/* Attendance History */}
-                <div className="lg:col-span-3 bg-white rounded-xl shadow-sm border border-gray-100 flex flex-col overflow-hidden">
-                    <div className="p-4 border-b border-gray-50 bg-gray-50/50 flex items-center justify-between">
-                        <span className="text-[12px] font-semibold text-[#111318] uppercase tracking-wider">Attendance History</span>
+                {/* Left Column: Stats & Status */}
+                <div className="lg:col-span-2 space-y-6">
+                    {/* Today's Status */}
+                    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 flex flex-col md:flex-row items-center justify-between gap-6">
+                        <div>
+                            <h2 className="text-lg font-bold text-[#111318] mb-1">Today's Status</h2>
+                            <p className="text-sm text-[#6B6F76]">Your recorded attendance for today.</p>
+                        </div>
+                        
+                        {todayRecord ? (
+                            <div className={`px-6 py-3 rounded-full flex items-center gap-3 ${
+                                todayRecord.status === 'Present' ? 'bg-emerald-50 text-emerald-600' :
+                                todayRecord.status === 'Late' ? 'bg-amber-50 text-amber-600' : 'bg-red-50 text-red-600'
+                            }`}>
+                                {todayRecord.status === 'Present' ? <CheckCircle size={24} /> :
+                                 todayRecord.status === 'Late' ? <Clock size={24} /> : <XCircle size={24} />}
+                                <span className="font-bold text-lg uppercase tracking-wider">{todayRecord.status}</span>
+                                <span className="text-sm border-l border-current pl-3 opacity-80">{todayRecord.time}</span>
+                            </div>
+                        ) : (
+                            <div className="px-6 py-3 rounded-full flex items-center gap-3 bg-gray-50 text-gray-500 border border-gray-200">
+                                <Clock size={24} />
+                                <span className="font-bold text-lg uppercase tracking-wider">Not Recorded</span>
+                            </div>
+                        )}
                     </div>
-                    <div className="flex-1 overflow-x-auto">
-                        <table className="w-full text-left border-collapse">
-                            <tbody>
-                                {recentAttendance.map((record, i) => (
-                                    <tr key={i} className="border-b border-gray-50 last:border-0 hover:bg-gray-50/50 transition-colors">
-                                        <td className="py-3.5 px-5 text-[13px] font-medium text-[#111318]">{record.date}</td>
-                                        <td className="py-3.5 px-3 text-[12px] font-medium text-[#6B6F76] tabular-nums w-16">{record.time}</td>
-                                        <td className="py-3.5 px-3 text-center w-24">
-                                            <span className={`inline-flex text-[11px] font-medium px-2 py-0.5 rounded-md ${
-                                                record.status === 'Present' ? 'bg-gray-100 text-[#111318]' : 
-                                                record.status === 'Late' ? 'bg-orange-50 text-[#F05A00] border border-orange-100' : 'bg-red-50 text-[#D40000] border border-red-100'
+
+                    {/* Quick Stats Grid */}
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 border-l-4 border-l-blue-500 transition-transform hover:scale-[1.02]">
+                            <p className="text-[12px] font-semibold text-[#6B6F76] uppercase tracking-wider mb-1">Attendance Rate</p>
+                            <p className="text-2xl font-bold text-[#111318]">{stats.rate}%</p>
+                        </div>
+                        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 border-l-4 border-l-emerald-500 transition-transform hover:scale-[1.02]">
+                            <p className="text-[12px] font-semibold text-[#6B6F76] uppercase tracking-wider mb-1">Present</p>
+                            <p className="text-2xl font-bold text-emerald-600">{stats.present}</p>
+                        </div>
+                        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 border-l-4 border-l-amber-500 transition-transform hover:scale-[1.02]">
+                            <p className="text-[12px] font-semibold text-[#6B6F76] uppercase tracking-wider mb-1">Late</p>
+                            <p className="text-2xl font-bold text-amber-500">{stats.late}</p>
+                        </div>
+                        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 border-l-4 border-l-red-500 transition-transform hover:scale-[1.02]">
+                            <p className="text-[12px] font-semibold text-[#6B6F76] uppercase tracking-wider mb-1">Absent</p>
+                            <p className="text-2xl font-bold text-red-500">{stats.absent}</p>
+                        </div>
+                    </div>
+
+                    {/* Recent History */}
+                    <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                        <div className="p-5 border-b border-gray-50 flex justify-between items-center">
+                            <h2 className="font-bold text-[#111318]">Recent Attendance</h2>
+                            <Link href="/student/history" className="text-sm font-semibold text-[#D40000] hover:underline">View All</Link>
+                        </div>
+                        <div className="divide-y divide-gray-50">
+                            {recentAttendances && recentAttendances.length > 0 ? (
+                                recentAttendances.map((record: any) => (
+                                    <div key={record.id} className="p-4 flex items-center justify-between hover:bg-gray-50 transition-colors">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center text-blue-500">
+                                                <CalendarCheck size={18} />
+                                            </div>
+                                            <div>
+                                                <p className="font-semibold text-[#111318]">
+                                                    {new Date(record.date).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+                                                </p>
+                                                <p className="text-xs text-[#6B6F76]">Method: <span className="uppercase">{record.method}</span></p>
+                                            </div>
+                                        </div>
+                                        <div className="text-right">
+                                            <p className={`font-bold text-sm uppercase tracking-wider ${
+                                                record.status === 'Present' ? 'text-emerald-600' :
+                                                record.status === 'Late' ? 'text-amber-500' : 'text-red-500'
                                             }`}>
                                                 {record.status}
-                                            </span>
-                                        </td>
-                                        <td className="py-3.5 px-5 text-right w-24">
-                                            {record.method !== '—' && (
-                                                <span className="inline-flex items-center gap-1.5 text-[10px] font-medium text-[#6B6F76] bg-gray-50 px-2 py-1 rounded border border-gray-100">
-                                                    {record.method === 'Face' ? <Camera size={10} /> : <Smartphone size={10} />}
-                                                    {record.method}
-                                                </span>
-                                            )}
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-
-                {/* Device & Face Info */}
-                <div className="lg:col-span-2 flex flex-col gap-6">
-                    <div className="bg-white rounded-xl shadow-sm border border-gray-100 flex flex-col overflow-hidden">
-                        <div className="p-4 border-b border-gray-50 bg-gray-50/50">
-                            <span className="text-[12px] font-semibold text-[#111318] uppercase tracking-wider">Registered Device</span>
-                        </div>
-                        <div className="p-5">
-                            <div className="text-[15px] font-semibold text-[#111318] mb-1">iPhone 13 Pro</div>
-                            <div className="text-[12px] font-mono text-[#6B6F76] bg-gray-50 px-2 py-1 rounded border border-gray-100 inline-block uppercase">4F8A-92BC-7D1E-XXXX</div>
-                        </div>
-                    </div>
-
-                    <div className="bg-white rounded-xl shadow-sm border border-gray-100 flex flex-col overflow-hidden">
-                        <div className="p-4 border-b border-gray-50 bg-gray-50/50 flex justify-between items-center">
-                            <span className="text-[12px] font-semibold text-[#111318] uppercase tracking-wider">Face Enrollment</span>
-                            {!hasEnrolled && (
-                                <a href="/student/face-enrollment" className="text-[11px] font-bold text-white bg-[#D40000] px-3 py-1 rounded-full hover:bg-red-700 transition-colors">
-                                    Register Now
-                                </a>
-                            )}
-                        </div>
-                        <div className="p-5">
-                            {hasEnrolled ? (
-                                <>
-                                    <div className="flex items-center gap-2 mb-1.5">
-                                        <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)] animate-pulse" />
-                                        <span className="text-[15px] font-semibold text-[#111318]">Enrolled</span>
+                                            </p>
+                                            <p className="text-xs font-semibold text-[#6B6F76]">{record.time}</p>
+                                        </div>
                                     </div>
-                                    <div className="text-[13px] text-[#6B6F76] font-medium">Ready for face attendance</div>
-                                </>
+                                ))
                             ) : (
-                                <>
-                                    <div className="flex items-center gap-2 mb-1.5">
-                                        <div className="w-2 h-2 rounded-full bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.5)] animate-pulse" />
-                                        <span className="text-[15px] font-semibold text-[#111318]">Not Enrolled</span>
-                                    </div>
-                                    <div className="text-[13px] text-[#6B6F76] font-medium">Biometric data is missing</div>
-                                </>
+                                <div className="p-8 text-center text-[#6B6F76] text-sm">No recent attendance records found.</div>
                             )}
                         </div>
                     </div>
                 </div>
-            </section>
 
-            {/* ✨ SHORTCUTS ✨ */}
-            <footer className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <span className="text-[12px] font-semibold text-[#6B6F76] uppercase tracking-wider pl-1">
-                    Quick Actions
-                </span>
-                <div className="flex flex-wrap gap-2">
-                    <Link href="/student/history" className="flex items-center gap-1 text-[12px] font-semibold text-[#111318] bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-lg px-3 py-1.5 transition-colors">
-                        Attendance History
-                        <ArrowUpRight size={12} className="text-[#6B6F76]" />
-                    </Link>
-                    <Link href="/student/profile" className="flex items-center gap-1 text-[12px] font-semibold text-[#111318] bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-lg px-3 py-1.5 transition-colors">
-                        My Profile
-                        <ArrowUpRight size={12} className="text-[#6B6F76]" />
-                    </Link>
-                    <Link href="/student/device" className="flex items-center gap-1 text-[12px] font-semibold text-[#111318] bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-lg px-3 py-1.5 transition-colors">
-                        My Device
-                        <ArrowUpRight size={12} className="text-[#6B6F76]" />
-                    </Link>
+                {/* Right Column: Cards */}
+                <div className="space-y-6">
+                    {/* Face Enrollment Card */}
+                    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 flex flex-col items-center text-center transition-all hover:shadow-md">
+                        <div className={`w-16 h-16 rounded-full flex items-center justify-center mb-4 ${hasEnrolled ? 'bg-emerald-50 text-emerald-500' : 'bg-red-50 text-red-500'}`}>
+                            {hasEnrolled ? <ShieldCheck size={32} /> : <XCircle size={32} />}
+                        </div>
+                        <h3 className="font-bold text-[#111318] text-lg mb-1">Face Recognition</h3>
+                        <p className="text-sm text-[#6B6F76] mb-4">
+                            {hasEnrolled 
+                                ? "Your face data is registered and active for the AI Scanner." 
+                                : "You haven't registered your face data yet. Please enroll to use the scanner."}
+                        </p>
+                        
+                        <Link 
+                            href="/student/face-enrollment" 
+                            className={`w-full py-2.5 rounded-lg text-sm font-semibold transition-colors ${
+                                hasEnrolled 
+                                ? 'bg-gray-100 text-[#111318] hover:bg-gray-200' 
+                                : 'bg-[#D40000] text-white hover:bg-[#8E0010]'
+                            }`}
+                        >
+                            {hasEnrolled ? 'Update Face Data' : 'Register Now'}
+                        </Link>
+                    </div>
+
+                    {/* Biometric/Passkey Card */}
+                    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 flex flex-col items-center text-center transition-all hover:shadow-md">
+                        <div className={`w-16 h-16 rounded-full flex items-center justify-center mb-4 ${hasPasskey ? 'bg-blue-50 text-blue-500' : 'bg-gray-50 text-gray-400'}`}>
+                            <Fingerprint size={32} />
+                        </div>
+                        <h3 className="font-bold text-[#111318] text-lg mb-1">Biometric Login</h3>
+                        <p className="text-sm text-[#6B6F76] mb-4">
+                            {hasPasskey 
+                                ? "You have registered a Passkey (Fingerprint/FaceID) for secure login." 
+                                : "Register your device's fingerprint or FaceID for passwordless login."}
+                        </p>
+                        
+                        <Link 
+                            href="/student/device" 
+                            className="w-full py-2.5 rounded-lg text-sm font-semibold bg-gray-100 text-[#111318] hover:bg-gray-200 transition-colors"
+                        >
+                            Manage Devices
+                        </Link>
+                    </div>
                 </div>
-            </footer>
+            </div>
         </DashboardLayout>
     );
 }

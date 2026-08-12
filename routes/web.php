@@ -67,21 +67,16 @@ Route::middleware(['auth', 'verified', \App\Http\Middleware\CheckActivation::cla
 
     // Student Dashboard
     Route::middleware(['role:student'])->group(function () {
-        Route::get('/student/dashboard', function () {
-            $hasEnrolled = \App\Models\FaceEmbedding::where('user_id', \Illuminate\Support\Facades\Auth::id())->exists();
-            return inertia('dashboards/student', [
-                'hasEnrolled' => $hasEnrolled
-            ]);
-        })->name('student.dashboard');
+        Route::get('/student/dashboard', [\App\Http\Controllers\Student\DashboardController::class, 'index'])->name('student.dashboard');
         
         // Face Enrollment
         Route::get('/student/face-enrollment', [\App\Http\Controllers\Student\FaceEnrollmentController::class, 'index'])->name('student.face-enrollment');
         Route::post('/student/face-enrollment', [\App\Http\Controllers\Student\FaceEnrollmentController::class, 'store'])->name('student.face-enrollment.store');
         
-        // Modules (Placeholders)
-        Route::inertia('/student/history', 'student/history/index')->name('student.history');
-        Route::inertia('/student/profile', 'student/profile/index')->name('student.profile');
-        Route::inertia('/student/device', 'student/device/index')->name('student.device');
+        // Modules
+        Route::get('/student/history', [\App\Http\Controllers\Student\HistoryController::class, 'index'])->name('student.history');
+        Route::get('/student/profile', [\App\Http\Controllers\Student\ProfileController::class, 'index'])->name('student.profile');
+        Route::get('/student/device', [\App\Http\Controllers\Student\DeviceController::class, 'index'])->name('student.device');
     });
 
     // Super Admin Dashboard
