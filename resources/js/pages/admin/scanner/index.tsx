@@ -4,10 +4,8 @@ import { Camera, CheckCircle, Loader2, Maximize, AlertCircle, XCircle, Sun, Moon
 import React, { useEffect, useRef, useState } from 'react';
 import { attendance, embeddings } from '@/routes/admin/scanner';
 
-// Resolve asset/API paths relative to the app base URL so the scanner also works when
-// the app is served from a sub-path (e.g. http://host/patpul/public) instead of the domain root.
-const baseUrl = import.meta.env.BASE_URL;
-
+// Note: import.meta.env.BASE_URL compiles to '/build/' in production (the asset base),
+// so static app paths like /models must stay root-relative - do NOT prefix them with BASE_URL.
 const parseJsonResponse = async (response: Response): Promise<unknown> => {
     const text = await response.text();
 
@@ -75,7 +73,7 @@ export default function FaceScanner() {
 
     useEffect(() => {
         const loadFaceModel = async (modelName: string): Promise<void> => {
-            const manifestUrl = `${baseUrl}models/${modelName}-weights_manifest.json`;
+            const manifestUrl = `/models/${modelName}-weights_manifest.json`;
             const response = await fetch(manifestUrl);
             const body = await response.text();
 
@@ -91,9 +89,9 @@ export default function FaceScanner() {
                 // 1. Load models
                 setStatusText('Loading AI Models...');
                 await Promise.all([
-                    loadFaceModel('ssd_mobilenetv1_model').then(() => faceapi.nets.ssdMobilenetv1.loadFromUri(`${baseUrl}models`)),
-                    loadFaceModel('face_landmark_68_model').then(() => faceapi.nets.faceLandmark68Net.loadFromUri(`${baseUrl}models`)),
-                    loadFaceModel('face_recognition_model').then(() => faceapi.nets.faceRecognitionNet.loadFromUri(`${baseUrl}models`))
+                    loadFaceModel('ssd_mobilenetv1_model').then(() => faceapi.nets.ssdMobilenetv1.loadFromUri('/models')),
+                    loadFaceModel('face_landmark_68_model').then(() => faceapi.nets.faceLandmark68Net.loadFromUri('/models')),
+                    loadFaceModel('face_recognition_model').then(() => faceapi.nets.faceRecognitionNet.loadFromUri('/models'))
                 ]);
 
                 // 2. Fetch all embeddings
@@ -302,7 +300,7 @@ return;
         lastRecognizedRef.current[user.id] = now;
 
         // Play sound
-        const audio = new Audio(`${baseUrl}sounds/ding.mp3`); // We'll assume a sound file exists or just let it fail silently
+        const audio = new Audio('/sounds/ding.mp3'); // We'll assume a sound file exists or just let it fail silently
         audio.play().catch(e => {});
 
         // Add optimistic log
