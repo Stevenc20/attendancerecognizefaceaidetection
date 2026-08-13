@@ -10,10 +10,9 @@ export default function TeacherReports() {
 
     const currentMonth = new Date().toLocaleString('en-US', { month: 'long', year: 'numeric' });
 
-    const [signature, setSignature] = useState<string | null>(null);
-    const [isSigning, setIsSigning] = useState(false);
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const [isDrawing, setIsDrawing] = useState(false);
+    const [hasSignature, setHasSignature] = useState(false);
 
     const startDrawing = (e: any) => {
         if (!canvasRef.current) return;
@@ -23,10 +22,16 @@ export default function TeacherReports() {
         
         ctx.beginPath();
         const rect = canvas.getBoundingClientRect();
+        // Handle scaling between display size and actual size
+        const scaleX = canvas.width / rect.width;
+        const scaleY = canvas.height / rect.height;
+        
         const clientX = e.clientX || (e.touches && e.touches[0].clientX);
         const clientY = e.clientY || (e.touches && e.touches[0].clientY);
-        ctx.moveTo(clientX - rect.left, clientY - rect.top);
+        
+        ctx.moveTo((clientX - rect.left) * scaleX, (clientY - rect.top) * scaleY);
         setIsDrawing(true);
+        setHasSignature(true);
     };
 
     const stopDrawing = () => {
@@ -43,12 +48,15 @@ export default function TeacherReports() {
         if (!ctx) return;
 
         const rect = canvas.getBoundingClientRect();
+        const scaleX = canvas.width / rect.width;
+        const scaleY = canvas.height / rect.height;
+
         const clientX = e.clientX || (e.touches && e.touches[0].clientX);
         const clientY = e.clientY || (e.touches && e.touches[0].clientY);
-        const x = clientX - rect.left;
-        const y = clientY - rect.top;
+        const x = (clientX - rect.left) * scaleX;
+        const y = (clientY - rect.top) * scaleY;
 
-        ctx.lineWidth = 2;
+        ctx.lineWidth = 3;
         ctx.lineCap = 'round';
         ctx.strokeStyle = '#000';
 
@@ -60,13 +68,7 @@ export default function TeacherReports() {
         if (canvasRef.current) {
             const ctx = canvasRef.current.getContext('2d');
             ctx?.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
-        }
-    };
-
-    const saveSignature = () => {
-        if (canvasRef.current) {
-            setSignature(canvasRef.current.toDataURL('image/png'));
-            setIsSigning(false);
+            setHasSignature(false);
         }
     };
 
@@ -204,29 +206,42 @@ export default function TeacherReports() {
 
                     {/* SIGNATURE BLOCK */}
                     <div className="p-8 pt-10 border-t border-gray-50 bg-white flex justify-end">
-                        <div 
-                            className={`text-center w-64 relative group ${!signature ? 'cursor-pointer hover:bg-gray-50 rounded-lg p-2 transition-colors' : ''}`}
-                            onClick={() => { if (!signature) setIsSigning(true); }}
-                        >
+                        <div className="text-center w-64 relative group">
                             <p className="text-sm text-[#111318] mb-6">
                                 Jakarta, {new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
                                 <br />
                                 Wali Kelas
                             </p>
 
-                            <div className="h-32 w-full flex items-center justify-center mb-4 relative cursor-pointer border-2 border-dashed border-gray-300 rounded-xl bg-gray-50/50 hover:bg-gray-100 transition-colors print:border-none print:bg-transparent" onClick={(e) => { e.stopPropagation(); setIsSigning(true); }}>
-                                {signature ? (
-                                    <>
-                                        <img src={signature} alt="Signature" className="h-full w-full object-contain mix-blend-multiply" />
-                                        <button className="absolute inset-0 bg-white/80 opacity-0 group-hover:opacity-100 flex items-center justify-center text-sm font-bold text-[#111318] transition-opacity print:hidden rounded-xl">
-                                            ✏️ Change Signature
-                                        </button>
-                                    </>
-                                ) : (
-                                    <div className="text-center print:hidden">
-                                        <span className="block text-[#111318] text-sm font-bold mb-1">✍️ Add Digital Signature</span>
-                                        <span className="text-[#6B6F76] text-xs">Click here to sign</span>
+                            {/* INLINE SIGNATURE CANVAS */}
+                            <div className="h-32 w-full mb-4 relative touch-none group">
+                                <canvas
+                                    ref={canvasRef}
+                                    width={256}
+                                    height={128}
+                                    className="cursor-crosshair w-full h-full border-b border-dashed border-gray-300 print:border-none relative z-10"
+                                    onMouseDown={startDrawing}
+                                    onMouseUp={stopDrawing}
+                                    onMouseOut={stopDrawing}
+                                    onMouseMove={draw}
+                                    onTouchStart={startDrawing}
+                                    onTouchEnd={stopDrawing}
+                                    onTouchMove={draw}
+                                />
+                                {!hasSignature && (
+                                    <div className="absolute inset-0 pointer-events-none flex flex-col items-center justify-center print:hidden opacity-40 z-0">
+                                        <span className="text-[#6B6F76] text-xs font-semibold uppercase tracking-wider mb-1">Draw Here</span>
+                                        <span className="text-gray-300">✍️</span>
                                     </div>
+                                )}
+                                {hasSignature && (
+                                    <button 
+                                        onClick={clearSignature} 
+                                        className="absolute -right-2 -top-2 bg-gray-100 hover:bg-red-100 text-gray-500 hover:text-red-600 rounded-full p-1.5 text-[10px] opacity-0 group-hover:opacity-100 transition-all print:hidden z-20"
+                                        title="Clear Signature"
+                                    >
+                                        ❌
+                                    </button>
                                 )}
                             </div>
 
@@ -241,70 +256,6 @@ export default function TeacherReports() {
                     <h2 className="text-lg font-bold text-[#111318] mb-1">No Homeroom Class Assigned</h2>
                     <p className="text-sm text-[#6B6F76] max-w-md">You are not currently assigned as a Wali Kelas (Homeroom Teacher) for any classroom.</p>
                 </section>
-            )}
-
-            {/* SIGNATURE MODAL */}
-            {isSigning && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4 print:hidden backdrop-blur-sm">
-                    <div className="bg-white rounded-xl shadow-lg p-6 max-w-md w-full">
-                        <h3 className="font-bold text-lg text-[#111318] mb-4">Add Digital Signature</h3>
-                        <p className="text-sm text-[#6B6F76] mb-4">Upload a transparent PNG image of your signature, or draw one below. It will be attached to your report for printing.</p>
-                        
-                        {/* UPLOAD FILE */}
-                        <div className="mb-4">
-                            <label className="block w-full border-2 border-dashed border-gray-300 rounded-lg p-4 text-center cursor-pointer hover:bg-gray-50 transition-colors">
-                                <span className="text-sm font-semibold text-[#111318] block mb-1">📁 Upload Signature Image</span>
-                                <span className="text-xs text-[#6B6F76]">Click to select a .PNG or .JPG file</span>
-                                <input 
-                                    type="file" 
-                                    accept="image/*" 
-                                    className="hidden" 
-                                    onChange={(e) => {
-                                        const file = e.target.files?.[0];
-                                        if (file) {
-                                            const reader = new FileReader();
-                                            reader.onload = (event) => {
-                                                setSignature(event.target?.result as string);
-                                                setIsSigning(false);
-                                            };
-                                            reader.readAsDataURL(file);
-                                        }
-                                    }} 
-                                />
-                            </label>
-                        </div>
-
-                        <div className="flex items-center justify-center gap-2 mb-4">
-                            <hr className="w-full border-gray-200" />
-                            <span className="text-xs text-gray-400 font-medium">OR DRAW</span>
-                            <hr className="w-full border-gray-200" />
-                        </div>
-
-                        {/* CANVAS */}
-                        <div className="border border-gray-200 rounded-lg bg-gray-50 mb-4 overflow-hidden touch-none relative">
-                            <canvas
-                                ref={canvasRef}
-                                width={384}
-                                height={200}
-                                className="cursor-crosshair w-full"
-                                onMouseDown={startDrawing}
-                                onMouseUp={stopDrawing}
-                                onMouseOut={stopDrawing}
-                                onMouseMove={draw}
-                                onTouchStart={startDrawing}
-                                onTouchEnd={stopDrawing}
-                                onTouchMove={draw}
-                            />
-                        </div>
-                        <div className="flex justify-between items-center">
-                            <button onClick={clearSignature} className="px-4 py-2 text-sm font-semibold text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors">Clear Drawing</button>
-                            <div className="flex gap-2">
-                                <button onClick={() => setIsSigning(false)} className="px-4 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">Cancel</button>
-                                <button onClick={saveSignature} className="px-4 py-2 text-sm font-semibold text-white bg-[#111318] hover:bg-[#20242D] rounded-lg transition-colors">Save Drawing</button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
             )}
         </DashboardLayout>
     );
