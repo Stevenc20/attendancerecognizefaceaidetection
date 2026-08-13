@@ -40,7 +40,7 @@ class SessionController extends Controller
                     ->where('date', $date)
                     ->get();
                 
-                $presentCount = $attendances->where('status', 'Present')->count() + $attendances->where('status', 'Late')->count();
+                $presentCount = $attendances->whereIn('status', ['Present', 'present', 'Late', 'late'])->count();
                 $absentCount = count($students) - $presentCount;
                 
                 $sessions[] = [

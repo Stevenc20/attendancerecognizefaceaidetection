@@ -41,8 +41,8 @@ class ReportController extends Controller
                     ->whereIn('date', $dates)
                     ->get();
                 
-                $presentCount = $attendances->where('status', 'Present')->count();
-                $lateCount = $attendances->where('status', 'Late')->count();
+                $presentCount = $attendances->whereIn('status', ['Present', 'present'])->count();
+                $lateCount = $attendances->whereIn('status', ['Late', 'late'])->count();
                 $absentCount = $totalSessions - ($presentCount + $lateCount);
                 
                 $reportData[] = [
