@@ -70,7 +70,7 @@ export default function Login({
                                 <div className="relative group">
                                     <input
                                         id="email"
-                                        type="email"
+                                        type="text"
                                         name="email"
                                         required
                                         autoFocus
