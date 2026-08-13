@@ -16,8 +16,17 @@ export default function TeacherReports() {
     const [isDrawing, setIsDrawing] = useState(false);
 
     const startDrawing = (e: any) => {
+        if (!canvasRef.current) return;
+        const canvas = canvasRef.current;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+        
+        ctx.beginPath();
+        const rect = canvas.getBoundingClientRect();
+        const clientX = e.clientX || (e.touches && e.touches[0].clientX);
+        const clientY = e.clientY || (e.touches && e.touches[0].clientY);
+        ctx.moveTo(clientX - rect.left, clientY - rect.top);
         setIsDrawing(true);
-        draw(e);
     };
 
     const stopDrawing = () => {
@@ -45,8 +54,6 @@ export default function TeacherReports() {
 
         ctx.lineTo(x, y);
         ctx.stroke();
-        ctx.beginPath();
-        ctx.moveTo(x, y);
     };
 
     const clearSignature = () => {
@@ -197,25 +204,28 @@ export default function TeacherReports() {
 
                     {/* SIGNATURE BLOCK */}
                     <div className="p-8 pt-10 border-t border-gray-50 bg-white flex justify-end">
-                        <div className="text-center w-64 relative group">
+                        <div 
+                            className={`text-center w-64 relative group ${!signature ? 'cursor-pointer hover:bg-gray-50 rounded-lg p-2 transition-colors' : ''}`}
+                            onClick={() => { if (!signature) setIsSigning(true); }}
+                        >
                             <p className="text-sm text-[#111318] mb-6">
                                 Jakarta, {new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
                                 <br />
                                 Wali Kelas
                             </p>
 
-                            <div className="h-20 flex items-center justify-center mb-2 relative">
+                            <div className="h-20 flex items-center justify-center mb-2 relative cursor-pointer" onClick={(e) => { e.stopPropagation(); setIsSigning(true); }}>
                                 {signature ? (
                                     <>
                                         <img src={signature} alt="Signature" className="h-full object-contain mix-blend-multiply" />
-                                        <button onClick={() => setIsSigning(true)} className="absolute inset-0 bg-white/80 opacity-0 group-hover:opacity-100 flex items-center justify-center text-xs font-bold text-gray-700 transition-opacity print:hidden">
+                                        <button className="absolute inset-0 bg-white/80 opacity-0 group-hover:opacity-100 flex items-center justify-center text-xs font-bold text-gray-700 transition-opacity print:hidden">
                                             Change Signature
                                         </button>
                                     </>
                                 ) : (
-                                    <button onClick={() => setIsSigning(true)} className="text-[#6B6F76] text-xs font-medium border border-dashed border-gray-300 rounded px-4 py-2 hover:bg-gray-50 transition-colors print:hidden">
-                                        Click to Sign
-                                    </button>
+                                    <span className="text-[#6B6F76] text-xs font-medium border border-dashed border-gray-300 rounded px-4 py-2 hover:bg-gray-100 transition-colors print:hidden">
+                                        Click here to Sign
+                                    </span>
                                 )}
                             </div>
 
