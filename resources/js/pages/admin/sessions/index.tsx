@@ -1,4 +1,4 @@
-import { Head, usePage } from '@inertiajs/react';
+import { Head, usePage, Link } from '@inertiajs/react';
 import DashboardLayout from '@/layouts/dashboard-layout';
 import { Calendar } from 'lucide-react';
 
@@ -37,6 +37,9 @@ export default function AttendanceSessions() {
                                 <th className="py-3 px-5 text-[11px] font-semibold text-[#6B6F76] uppercase tracking-wider border-b border-gray-100 bg-white">
                                     Total Recorded
                                 </th>
+                                <th className="py-3 px-5 text-[11px] font-semibold text-[#6B6F76] uppercase tracking-wider border-b border-gray-100 bg-white text-right">
+                                    Actions
+                                </th>
                             </tr>
                         </thead>
                         <tbody>
@@ -60,6 +63,14 @@ export default function AttendanceSessions() {
                                             </td>
                                             <td className="py-4 px-5 text-[14px] font-medium text-[#6B6F76] tabular-nums">
                                                 {session.total_recorded}
+                                            </td>
+                                            <td className="py-4 px-5 text-right">
+                                                <Link 
+                                                    href={`/admin/sessions/${session.date}`}
+                                                    className="inline-flex items-center px-4 py-2 bg-gray-100 hover:bg-gray-200 text-[#111318] text-xs font-bold rounded-xl transition-colors"
+                                                >
+                                                    View Details
+                                                </Link>
                                             </td>
                                         </tr>
                                     );
