@@ -40,8 +40,8 @@ class ScannerController extends Controller
         $now = Carbon::now();
         $timeIn = $now->format('H:i:s');
         
-        // Define late threshold (e.g. 07:15)
-        $lateThreshold = Carbon::createFromTime(7, 15, 0);
+        // Define late threshold (06:20 AM)
+        $lateThreshold = Carbon::createFromTime(6, 20, 0);
         $status = $now->greaterThan($lateThreshold) ? 'late' : 'present';
 
         $attendance = Attendance::firstOrCreate(
