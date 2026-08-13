@@ -1,4 +1,4 @@
-import { Head, usePage } from '@inertiajs/react';
+import { Head, usePage, router } from '@inertiajs/react';
 import DashboardLayout from '@/layouts/dashboard-layout';
 import { ArrowUpRight, Users, CheckCircle, XCircle, Clock } from 'lucide-react';
 
@@ -23,13 +23,29 @@ export default function TeacherDashboard() {
         'View Schedule'
     ];
 
-    const getStatusIcon = (status: string) => {
+    const getStatusIcon = (status: string, studentId: number, date: string) => {
+        let icon;
         switch(status) {
-            case 'Present': return <CheckCircle className="text-emerald-500 mx-auto" size={16} />;
-            case 'Late': return <Clock className="text-amber-500 mx-auto" size={16} />;
-            case 'Absent': return <XCircle className="text-red-500/50 mx-auto" size={16} />;
-            default: return <span className="text-gray-300">-</span>;
+            case 'Present': icon = <CheckCircle className="text-emerald-500 mx-auto" size={16} />; break;
+            case 'Late': icon = <Clock className="text-amber-500 mx-auto" size={16} />; break;
+            case 'Absent': icon = <XCircle className="text-red-500/50 mx-auto" size={16} />; break;
+            default: icon = <span className="text-gray-300">-</span>; break;
         }
+
+        const handleToggle = () => {
+            const nextStatus = status === 'Present' ? 'Late' : (status === 'Late' ? 'Absent' : 'Present');
+            router.post('/teacher/attendance', {
+                user_id: studentId,
+                date: date,
+                status: nextStatus
+            }, { preserveScroll: true, preserveState: true });
+        };
+
+        return (
+            <button onClick={handleToggle} className="w-8 h-8 rounded-full hover:bg-gray-100 flex items-center justify-center transition-colors focus:outline-none" title={`Click to change. Current: ${status}`}>
+                {icon}
+            </button>
+        );
     };
 
     return (
@@ -99,8 +115,8 @@ export default function TeacherDashboard() {
                                                 <div className="text-[11px] text-[#6B6F76]">{student.nis}</div>
                                             </td>
                                             {dates && dates.map((date: string) => (
-                                                <td key={date} className="py-3 px-4 text-center border-r border-gray-50 last:border-0">
-                                                    {getStatusIcon(student.attendances[date])}
+                                                <td key={date} className="py-2 px-2 text-center border-r border-gray-50 last:border-0">
+                                                    {getStatusIcon(student.attendances[date], student.id, date)}
                                                 </td>
                                             ))}
                                         </tr>

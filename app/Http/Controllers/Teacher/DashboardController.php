@@ -67,7 +67,7 @@ class DashboardController extends Controller
             // Calculate today's metrics
             $todayDate = now()->format('Y-m-d');
             $todayAttendances = $attendances->where('date', $todayDate);
-            $classMetrics['present_today'] = $todayAttendances->where('status', 'Present')->count() + $todayAttendances->where('status', 'Late')->count();
+            $classMetrics['present_today'] = $todayAttendances->whereIn('status', ['Present', 'present', 'Late', 'late'])->count();
             // Assuming absent if not present/late, but for simplicity we just count missing records as absent
             $classMetrics['absent_today'] = $students->count() - $classMetrics['present_today'];
 
@@ -83,7 +83,7 @@ class DashboardController extends Controller
                 
                 foreach ($dates as $date) {
                     $record = $attendances->where('user_id', $student->id)->where('date', $date)->first();
-                    $studentData['attendances'][$date] = $record ? $record->status : 'Absent';
+                    $studentData['attendances'][$date] = $record ? ucfirst(strtolower($record->status)) : 'Absent';
                 }
                 $attendanceMatrix[] = $studentData;
             }
@@ -95,5 +95,47 @@ class DashboardController extends Controller
             'attendanceMatrix' => $attendanceMatrix,
             'classMetrics' => $classMetrics,
         ]);
+    }
+
+    public function updateAttendance(Request $request)
+    {
+        $validated = $request->validate([
+            'user_id' => 'required|exists:users,id',
+            'date' => 'required|date',
+            'status' => 'required|in:Present,Late,Absent'
+        ]);
+
+        $teacher = Auth::user();
+
+        // Verify the student belongs to the teacher's homeroom class
+        $homeroomClass = Classroom::where('teacher_id', $teacher->id)->first();
+        if (!$homeroomClass) {
+            return back()->with('error', 'Not authorized');
+        }
+
+        $student = User::where('id', $validated['user_id'])
+            ->where('classroom_id', $homeroomClass->id)
+            ->first();
+
+        if (!$student) {
+            return back()->with('error', 'Student not in your homeroom class');
+        }
+
+        if ($validated['status'] === 'Absent') {
+            // Delete record if marked absent
+            Attendance::where('user_id', $student->id)->where('date', $validated['date'])->delete();
+        } else {
+            // Update or create
+            Attendance::updateOrCreate(
+                ['user_id' => $student->id, 'date' => $validated['date']],
+                [
+                    'status' => strtolower($validated['status']),
+                    'method' => 'Manual',
+                    'time_in' => now()->format('H:i:s')
+                ]
+            );
+        }
+
+        return back()->with('success', 'Attendance updated');
     }
 }
