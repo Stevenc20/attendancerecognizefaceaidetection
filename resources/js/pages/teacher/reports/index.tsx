@@ -13,6 +13,7 @@ export default function TeacherReports() {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const [isDrawing, setIsDrawing] = useState(false);
     const [hasSignature, setHasSignature] = useState(false);
+    const [signatureData, setSignatureData] = useState<string | null>(null);
 
     const startDrawing = (e: any) => {
         if (!canvasRef.current) return;
@@ -38,6 +39,8 @@ export default function TeacherReports() {
         setIsDrawing(false);
         if (canvasRef.current) {
             canvasRef.current.getContext('2d')?.beginPath();
+            // Automatically save to image for printing compatibility
+            setSignatureData(canvasRef.current.toDataURL('image/png'));
         }
     };
 
@@ -69,6 +72,7 @@ export default function TeacherReports() {
             const ctx = canvasRef.current.getContext('2d');
             ctx?.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
             setHasSignature(false);
+            setSignatureData(null);
         }
     };
 
@@ -219,7 +223,7 @@ export default function TeacherReports() {
                                     ref={canvasRef}
                                     width={256}
                                     height={128}
-                                    className="cursor-crosshair w-full h-full border-b border-dashed border-gray-300 print:border-none relative z-10"
+                                    className="cursor-crosshair w-full h-full border-b border-dashed border-gray-300 print:hidden relative z-10"
                                     onMouseDown={startDrawing}
                                     onMouseUp={stopDrawing}
                                     onMouseOut={stopDrawing}
@@ -228,6 +232,9 @@ export default function TeacherReports() {
                                     onTouchEnd={stopDrawing}
                                     onTouchMove={draw}
                                 />
+                                {signatureData && (
+                                    <img src={signatureData} alt="Printable Signature" className="hidden print:block absolute inset-0 w-full h-full object-contain mix-blend-multiply z-10" />
+                                )}
                                 {!hasSignature && (
                                     <div className="absolute inset-0 pointer-events-none flex flex-col items-center justify-center print:hidden opacity-40 z-0">
                                         <span className="text-[#6B6F76] text-xs font-semibold uppercase tracking-wider mb-1">Draw Here</span>
