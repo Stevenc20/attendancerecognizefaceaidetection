@@ -230,36 +230,37 @@ export default function TeacherReports() {
                             </p>
 
                             {/* INLINE SIGNATURE CANVAS */}
-                            <div className="h-32 w-full mb-4 relative touch-none group">
-                                <canvas
-                                    ref={canvasRef}
-                                    width={256}
-                                    height={128}
-                                    className="cursor-crosshair w-full h-full border-b border-dashed border-gray-300 print:hidden relative z-10"
-                                    onMouseDown={startDrawing}
-                                    onMouseUp={stopDrawing}
-                                    onMouseOut={stopDrawing}
-                                    onMouseMove={draw}
-                                    onTouchStart={startDrawing}
-                                    onTouchEnd={stopDrawing}
-                                    onTouchMove={draw}
-                                />
-                                {signatureData && (
-                                    <img src={signatureData} alt="Printable Signature" className="hidden print:block absolute inset-0 w-full h-full object-contain mix-blend-multiply z-10" />
-                                )}
-                                {!hasSignature && (
-                                    <div className="absolute inset-0 pointer-events-none flex flex-col items-center justify-center print:hidden opacity-40 z-0">
-                                        <span className="text-[#6B6F76] text-xs font-semibold uppercase tracking-wider mb-1">Draw Here</span>
-                                        <span className="text-gray-300">✍️</span>
-                                    </div>
-                                )}
+                            <div className="w-full mb-4 group">
+                                <div className="h-32 w-full relative touch-none border-b border-dashed border-gray-300 print:hidden z-10 bg-gray-50/30 rounded-t-lg">
+                                    <canvas
+                                        ref={canvasRef}
+                                        width={256}
+                                        height={128}
+                                        className="cursor-crosshair w-full h-full relative z-10"
+                                        onMouseDown={startDrawing}
+                                        onMouseUp={stopDrawing}
+                                        onMouseOut={stopDrawing}
+                                        onMouseMove={draw}
+                                        onTouchStart={startDrawing}
+                                        onTouchEnd={stopDrawing}
+                                        onTouchMove={draw}
+                                    />
+                                    {signatureData && (
+                                        <img src={signatureData} alt="Printable Signature" className="hidden print:block absolute inset-0 w-full h-full object-contain mix-blend-multiply z-10" />
+                                    )}
+                                    {!hasSignature && (
+                                        <div className="absolute inset-0 pointer-events-none flex flex-col items-center justify-center print:hidden opacity-50 z-0">
+                                            <span className="text-[#6B6F76] text-xs font-semibold uppercase tracking-wider mb-1">Coret Tanda Tangan Di Sini</span>
+                                            <span className="text-gray-400 text-lg">✍️</span>
+                                        </div>
+                                    )}
+                                </div>
                                 {hasSignature && (
                                     <button 
                                         onClick={clearSignature} 
-                                        className="absolute -right-3 -top-3 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 rounded-full w-8 h-8 flex items-center justify-center text-sm shadow-sm transition-all print:hidden z-20"
-                                        title="Clear Signature"
+                                        className="w-full mt-2 py-2 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 rounded-b-lg text-xs font-bold transition-all print:hidden flex items-center justify-center gap-1"
                                     >
-                                        ❌
+                                        <span>🗑️</span> Hapus Tanda Tangan
                                     </button>
                                 )}
                             </div>
