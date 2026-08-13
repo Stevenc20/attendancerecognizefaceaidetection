@@ -214,18 +214,19 @@ export default function TeacherReports() {
                                 Wali Kelas
                             </p>
 
-                            <div className="h-20 flex items-center justify-center mb-2 relative cursor-pointer" onClick={(e) => { e.stopPropagation(); setIsSigning(true); }}>
+                            <div className="h-32 w-full flex items-center justify-center mb-4 relative cursor-pointer border-2 border-dashed border-gray-300 rounded-xl bg-gray-50/50 hover:bg-gray-100 transition-colors print:border-none print:bg-transparent" onClick={(e) => { e.stopPropagation(); setIsSigning(true); }}>
                                 {signature ? (
                                     <>
-                                        <img src={signature} alt="Signature" className="h-full object-contain mix-blend-multiply" />
-                                        <button className="absolute inset-0 bg-white/80 opacity-0 group-hover:opacity-100 flex items-center justify-center text-xs font-bold text-gray-700 transition-opacity print:hidden">
-                                            Change Signature
+                                        <img src={signature} alt="Signature" className="h-full w-full object-contain mix-blend-multiply" />
+                                        <button className="absolute inset-0 bg-white/80 opacity-0 group-hover:opacity-100 flex items-center justify-center text-sm font-bold text-[#111318] transition-opacity print:hidden rounded-xl">
+                                            ✏️ Change Signature
                                         </button>
                                     </>
                                 ) : (
-                                    <span className="text-[#6B6F76] text-xs font-medium border border-dashed border-gray-300 rounded px-4 py-2 hover:bg-gray-100 transition-colors print:hidden">
-                                        Click here to Sign
-                                    </span>
+                                    <div className="text-center print:hidden">
+                                        <span className="block text-[#111318] text-sm font-bold mb-1">✍️ Add Digital Signature</span>
+                                        <span className="text-[#6B6F76] text-xs">Click here to sign</span>
+                                    </div>
                                 )}
                             </div>
 
