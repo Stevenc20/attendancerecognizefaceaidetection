@@ -1,4 +1,5 @@
 import { Head, Link } from '@inertiajs/react';
+import axios from 'axios';
 import * as faceapi from '@vladmandic/face-api';
 import { Camera, CheckCircle, Loader2, Maximize, AlertCircle, XCircle, Sun, Moon } from 'lucide-react';
 import React, { useEffect, useRef, useState } from 'react';
@@ -6,7 +7,19 @@ import { estimateEAR, isEyeClosed } from '@/lib/liveness';
 import { attendance, embeddings } from '@/routes/admin/scanner';
 
 const LIVENESS_WINDOW_MS = 10000;
-const BLINK_CLOSED_FRAMES = 2;
+const BLINK_CLOSED_FRAMES = 1;
+const MIN_YAW_RANGE = 0.8; // Extremely small threshold to instantly detect living micro-tremors vs static photo
+
+const estimateYaw = (landmarks: faceapi.FaceLandmarks68): number => {
+    const positions = landmarks.positions;
+    const leftEye = positions[36];
+    const rightEye = positions[45];
+    const noseTip = positions[30];
+    const eyeDist = Math.hypot(rightEye.x - leftEye.x, rightEye.y - leftEye.y);
+    const midEyesX = (leftEye.x + rightEye.x) / 2;
+    const offset = noseTip.x - midEyesX;
+    return (Math.asin(Math.max(-1, Math.min(1, offset / eyeDist))) * 180) / Math.PI;
+};
 
 // Note: import.meta.env.BASE_URL compiles to '/build/' in production (the asset base),
 // so static app paths like /models must stay root-relative - do NOT prefix them with BASE_URL.
@@ -39,7 +52,7 @@ type LogEntry = {
     id: string;
     time: string;
     user: FaceEmbedding['user'];
-    status: 'success' | 'already' | 'error';
+    status: 'success' | 'already' | 'error' | 'late';
     message: string;
     count: number;
 };
@@ -57,18 +70,31 @@ export default function FaceScanner() {
     const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
     const [selectedDeviceId, setSelectedDeviceId] = useState<string>('');
     const [theme, setTheme] = useState<'dark'|'light'>('light');
+    const [currentTime, setCurrentTime] = useState(new Date());
     
-    // To prevent spamming the backend for the same person standing in front
-    const lastRecognizedRef = useRef<{ [key: string]: number }>({});
+    // To prevent spamming the
+    const [errorMsg, setErrorMsg] = useState<string | null>(null);
+    const [statusMsg, setStatusMsg] = useState<string>('Initializing models...');
+
+    // Liveness and Logging Refs
     const alreadyPresentUsersRef = useRef<Set<number>>(new Set());
     const logsRef = useRef<LogEntry[]>([]);
     const detectLoopIdRef = useRef<number>(0);
     const lastBlinkRef = useRef<{ [key: number]: number }>({});
     const closedFramesRef = useRef<{ [key: number]: number }>({});
+    const yawHistoryRef = useRef<{ [key: number]: number[] }>({});
+    const staticFramesRef = useRef<{ [key: string]: number }>({});
+    const lastAlertTimeRef = useRef<{ [key: string]: number }>({});
     
     useEffect(() => {
         logsRef.current = logs;
     }, [logs]);
+
+    // Live clock timer
+    useEffect(() => {
+        const timer = setInterval(() => setCurrentTime(new Date()), 1000);
+        return () => clearInterval(timer);
+    }, []);
 
     useEffect(() => {
         navigator.mediaDevices.enumerateDevices()
@@ -211,6 +237,22 @@ export default function FaceScanner() {
         // Increment loop ID to kill any existing loops
         const currentLoopId = ++detectLoopIdRef.current;
 
+        const sendSecurityAlert = async (type: 'spoofing' | 'unknown_face', description: string) => {
+            const now = Date.now();
+            const lastAlert = lastAlertTimeRef.current[type] || 0;
+            
+            // Throttle alerts to once every 10 seconds per type to avoid spamming the backend
+            if (now - lastAlert < 10000) return;
+            
+            lastAlertTimeRef.current[type] = now;
+            
+            try {
+                await axios.post('/admin/alerts', { type, description });
+            } catch (err) {
+                console.error("Failed to send security alert", err);
+            }
+        };
+
         const detectLoop = async () => {
             // Check if this loop is still the active one
             if (detectLoopIdRef.current !== currentLoopId) {
@@ -223,12 +265,10 @@ export default function FaceScanner() {
 
             const video = videoRef.current;
             const canvas = canvasRef.current;
-            
             const displaySize = { width: video.videoWidth, height: video.videoHeight };
 
-            if (displaySize.width === 0) {
-                setTimeout(detectLoop, 200);
-
+            if (displaySize.width === 0 || displaySize.height === 0) {
+                requestAnimationFrame(detectLoop);
                 return;
             }
             
@@ -257,43 +297,87 @@ export default function FaceScanner() {
                       const box = detection.detection.box;
                       let drawColor = '#D40000'; // Red for Unrecognized/Unknown
                       let labelText = 'Unknown';
+                      let isLive = false;
+                      let user: any = null;
+                      let distance = 0;
   
                       if (faceMatcher) {
                           const bestMatch = faceMatcher.findBestMatch(detection.descriptor);
                           
-                      if (bestMatch.label !== 'unknown' && bestMatch.distance < 0.55) {
-                              const user = JSON.parse(bestMatch.label);
+                          if (bestMatch.label === 'unknown') {
+                              staticFramesRef.current['unknown'] = (staticFramesRef.current['unknown'] || 0) + 1;
+                              if (staticFramesRef.current['unknown'] > 30) {
+                                  sendSecurityAlert('unknown_face', 'Unknown face detected lingering in frame for an extended period.');
+                                  staticFramesRef.current['unknown'] = 0;
+                              }
+                          } else if (bestMatch.distance < 0.55) {
+                              staticFramesRef.current['unknown'] = 0; // reset unknown counter
+                              user = JSON.parse(bestMatch.label);
+                              distance = bestMatch.distance;
                               const firstName = user.name.split(' ')[0];
 
-                              // Liveness: only accept a face that blinked within the last few seconds
-                              const ear = estimateEAR(detection.landmarks);
+                            // Liveness 1: Blink detection (Standard threshold)
+                            const ear = estimateEAR(detection.landmarks);
+                            
+                            if (ear < 0.26) {
+                                closedFramesRef.current[user.id] = (closedFramesRef.current[user.id] || 0) + 1;
+                            } else {
+                                if ((closedFramesRef.current[user.id] || 0) >= BLINK_CLOSED_FRAMES) {
+                                    lastBlinkRef.current[user.id] = Date.now();
+                                }
+                                closedFramesRef.current[user.id] = 0;
+                            }
+                            
+                            const hasBlinked = Date.now() - (lastBlinkRef.current[user.id] || 0) < LIVENESS_WINDOW_MS;
 
-                              if (isEyeClosed(ear)) {
-                                  closedFramesRef.current[user.id] = (closedFramesRef.current[user.id] || 0) + 1;
-                              } else {
-                                  if ((closedFramesRef.current[user.id] || 0) >= BLINK_CLOSED_FRAMES) {
-                                      lastBlinkRef.current[user.id] = Date.now();
-                                  }
+                            // Liveness 2: Natural Movement (3D Yaw variance)
+                            const yaw = estimateYaw(detection.landmarks);
+                            const history = yawHistoryRef.current[user.id] || [];
+                            history.push(yaw);
+                            if (history.length > 25) history.shift(); // Keep last ~25 frames (about 1-2 seconds)
+                            yawHistoryRef.current[user.id] = history;
+                            
+                            const minYaw = Math.min(...history);
+                            const maxYaw = Math.max(...history);
+                            const yawRange = maxYaw - minYaw;
+                            const hasMoved = yawRange >= MIN_YAW_RANGE;
 
-                                  closedFramesRef.current[user.id] = 0;
-                              }
+                            if (!hasMoved) {
+                                staticFramesRef.current[`spoof_${user.id}`] = (staticFramesRef.current[`spoof_${user.id}`] || 0) + 1;
+                                // 1. If it is completely static (a phone screen/photo), IGNORE IT ENTIRELY
+                                // Don't draw any box. It appears as if the AI completely ignores screens.
+                                if (staticFramesRef.current[`spoof_${user.id}`] > 30) {
+                                    sendSecurityAlert('spoofing', `Possible spoofing attempt using a phone/photo detected for user: ${user.name}`);
+                                    staticFramesRef.current[`spoof_${user.id}`] = 0; // Reset after alert
+                                }
+                                return; 
+                            }
+                            
+                            staticFramesRef.current[`spoof_${user.id}`] = 0; // Reset spoof tracker when live movement detected
+                            isLive = hasBlinked && hasMoved;
 
-                              const isLive = Date.now() - (lastBlinkRef.current[user.id] || 0) < LIVENESS_WINDOW_MS;
-
-                              if (!isLive) {
-                                  drawColor = '#60A5FA'; // Blue - waiting for blink verification
-                                  labelText = `${firstName} (kedip)`;
-                              } else if (alreadyPresentUsersRef.current.has(user.id)) {
-                                  drawColor = '#FBBF24'; // Yellow
-                                  labelText = `${firstName} (Recorded)`;
-                              } else {
-                                  drawColor = '#10B981'; // Green for Recognized
-                                  labelText = firstName;
-                              }
-
-                              if (isLive) {
-                                  processAttendance(user, bestMatch.distance);
-                              }
+                            // Display Logic Priority
+                            if (alreadyPresentUsersRef.current.has(user.id)) {
+                                // Already recorded today -> immediately show Yellow (no need to prove liveness again)
+                                drawColor = '#FBBF24'; // Yellow
+                                labelText = `${firstName} (Recorded)`;
+                            } else if (!hasBlinked) {
+                                // It's a real face (moving naturally) but hasn't blinked yet
+                                drawColor = '#60A5FA'; // Blue
+                                labelText = `${firstName} (kedip)`;
+                            } else {
+                                // Passed liveness
+                                const now = new Date();
+                                const isLate = now.getHours() > 6 || (now.getHours() === 6 && now.getMinutes() >= 20);
+                                
+                                if (isLate) {
+                                    drawColor = '#ef4444'; // Red for Late
+                                    labelText = `${firstName} (Late)`;
+                                } else {
+                                    drawColor = '#10B981'; // Green for On Time
+                                    labelText = firstName;
+                                }
+                            }
                           }
                       }
   
@@ -316,6 +400,11 @@ export default function FaceScanner() {
                           ctx.font = '16px Arial';
                           ctx.fillText(labelText, mirrorX + 5, box.y - 7);
                       }
+
+                      // Finally, process attendance if fully verified live
+                      if (isLive && user) {
+                          processAttendance(user, distance);
+                      }
                   });
             } catch (err) {
                 console.error("Face detection error:", err);
@@ -331,8 +420,13 @@ export default function FaceScanner() {
     const processAttendance = (user: FaceEmbedding['user'], distance: number) => {
         const now = Date.now();
 
-        // Liveness gate: never record for a face that has not blinked recently (e.g. a printed photo)
-        if (now - (lastBlinkRef.current[user.id] || 0) >= LIVENESS_WINDOW_MS) {
+        // Liveness gate: never record for a face that has not blinked or moved recently
+        const hasBlinked = now - (lastBlinkRef.current[user.id] || 0) < LIVENESS_WINDOW_MS;
+        const history = yawHistoryRef.current[user.id] || [];
+        const yawRange = history.length > 5 ? Math.max(...history) - Math.min(...history) : 0;
+        const hasMoved = yawRange >= MIN_YAW_RANGE;
+
+        if (!hasBlinked || !hasMoved) {
             return;
         }
 
@@ -375,13 +469,15 @@ export default function FaceScanner() {
         // Add optimistic log
         const logId = Math.random().toString(36).substring(7);
         const time = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        const nowTime = new Date();
+        const isLate = nowTime.getHours() > 6 || (nowTime.getHours() === 6 && nowTime.getMinutes() >= 20);
         
         const newLog: LogEntry = {
             id: logId,
             time,
             user,
-            status: 'success',
-            message: 'Recorded',
+            status: isLate ? 'late' : 'success',
+            message: isLate ? 'Late' : 'Recorded',
             count: 1
         };
 
@@ -450,7 +546,11 @@ export default function FaceScanner() {
                     </div>
                     <div>
                         <h1 className="text-lg font-bold tracking-tight">SMKN 40 LIVE SCANNER</h1>
-                        <p className={`text-xs uppercase tracking-widest ${theme === 'dark' ? 'text-white/50' : 'text-gray-500'}`}>{new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
+                        <div className={`text-xs uppercase tracking-widest flex items-center gap-2 ${theme === 'dark' ? 'text-white/50' : 'text-gray-500'}`}>
+                            <span>{currentTime.toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span>
+                            <span>•</span>
+                            <span className={`font-bold ${theme === 'dark' ? 'text-white/80' : 'text-gray-700'}`}>{currentTime.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
+                        </div>
                     </div>
                 </div>
 
@@ -556,6 +656,7 @@ export default function FaceScanner() {
                                             {log.count > 1 && (
                                                 <span className={`text-xs font-semibold px-1.5 py-0.5 rounded ${
                                                     log.status === 'success' ? (theme === 'dark' ? 'bg-emerald-500/20 text-emerald-300' : 'bg-emerald-100 text-emerald-700') :
+                                                    log.status === 'late' ? (theme === 'dark' ? 'bg-red-500/20 text-red-300' : 'bg-red-100 text-red-700') :
                                                     log.status === 'already' ? (theme === 'dark' ? 'bg-amber-500/20 text-amber-300' : 'bg-amber-100 text-amber-700') :
                                                     (theme === 'dark' ? 'bg-red-500/20 text-red-300' : 'bg-red-100 text-red-700')
                                                 }`}>
@@ -563,6 +664,7 @@ export default function FaceScanner() {
                                                 </span>
                                             )}
                                             {log.status === 'success' && <CheckCircle className="text-emerald-500" size={14} />}
+                                            {log.status === 'late' && <AlertCircle className="text-red-500" size={14} />}
                                             {log.status === 'already' && <CheckCircle className="text-amber-500" size={14} />}
                                             {log.status === 'error' && <AlertCircle className="text-red-500" size={14} />}
                                         </div>
@@ -575,6 +677,7 @@ export default function FaceScanner() {
                                     )}
                                     <div className={`mt-2 text-xs font-medium px-2 py-1 rounded inline-block ${
                                         log.status === 'success' ? (theme === 'dark' ? 'bg-emerald-500/20 text-emerald-300' : 'bg-emerald-100 text-emerald-700') :
+                                        log.status === 'late' ? (theme === 'dark' ? 'bg-red-500/20 text-red-300' : 'bg-red-100 text-red-700') :
                                         log.status === 'already' ? (theme === 'dark' ? 'bg-amber-500/20 text-amber-300' : 'bg-amber-100 text-amber-700') :
                                         (theme === 'dark' ? 'bg-red-500/20 text-red-300' : 'bg-red-100 text-red-700')
                                     }`}>

@@ -23,4 +23,19 @@ class AlertController extends Controller
         $alert->update(['resolved_at' => now()]);
         return back()->with('success', 'Alert resolved successfully');
     }
+
+    public function store(Request $request)
+    {
+        $validated = $request->validate([
+            'type' => 'required|string|in:spoofing,unknown_face',
+            'description' => 'required|string',
+        ]);
+
+        SecurityAlert::create([
+            'type' => $validated['type'],
+            'description' => $validated['description'],
+        ]);
+
+        return response()->json(['success' => true]);
+    }
 }
