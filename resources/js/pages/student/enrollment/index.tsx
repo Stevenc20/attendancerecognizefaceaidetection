@@ -3,6 +3,7 @@ import { Head, useForm, usePage } from '@inertiajs/react';
 import DashboardLayout from '@/layouts/dashboard-layout';
 import * as faceapi from '@vladmandic/face-api';
 import { Camera, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
+import { estimateEAR, isEyeClosed } from '@/lib/liveness';
 
 const estimateYaw = (landmarks: faceapi.FaceLandmarks68): number => {
     const positions = landmarks.positions;
@@ -28,7 +29,7 @@ export default function FaceEnrollment({ hasEnrolled }: { hasEnrolled: boolean }
     const [error, setError] = useState<string | null>(null);
     
     const STAGES = [
-        { label: "Pegang HP/Kamera Anda dengan tegak", instruction: "Jangan gerak-gerak dulu..." },
+        { label: "Pegang HP/Kamera Anda dengan tegak", instruction: "Berkedip untuk verifikasi, lalu jangan gerak-gerak dulu..." },
         { label: "Senyum", instruction: "Tahan senyum Anda..." },
         { label: "Tengok Kiri", instruction: "Tengok wajah sedikit ke kiri..." },
         { label: "Tengok Kanan", instruction: "Tengok wajah sedikit ke kanan..." }
@@ -43,6 +44,9 @@ export default function FaceEnrollment({ hasEnrolled }: { hasEnrolled: boolean }
     const bestDescriptorRef = useRef<Float32Array | null>(null);
     const fallbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const fallbackReadyRef = useRef(false);
+    const blinkCountRef = useRef(0);
+    const eyeClosedFramesRef = useRef(0);
+    const [hasBlinked, setHasBlinked] = useState(false);
 
     const clearFallback = () => {
         if (fallbackTimerRef.current !== null) {
@@ -133,6 +137,9 @@ export default function FaceEnrollment({ hasEnrolled }: { hasEnrolled: boolean }
         descriptorsRef.current = [];
         capturingRef.current = false;
         stableFramesRef.current = 0;
+        blinkCountRef.current = 0;
+        eyeClosedFramesRef.current = 0;
+        setHasBlinked(false);
         scheduleFallback();
         setStageIndex(0);
         
@@ -173,10 +180,23 @@ export default function FaceEnrollment({ hasEnrolled }: { hasEnrolled: boolean }
                     const currentStage = descriptorsRef.current.length;
                     const yaw = estimateYaw(detection.landmarks);
 
+                    const ear = estimateEAR(detection.landmarks);
+
+                    if (isEyeClosed(ear)) {
+                        eyeClosedFramesRef.current += 1;
+                    } else {
+                        if (eyeClosedFramesRef.current >= 2) {
+                            blinkCountRef.current += 1;
+                            setHasBlinked(true);
+                        }
+
+                        eyeClosedFramesRef.current = 0;
+                    }
+
                     let poseOk = false;
 
                     if (currentStage === 0) {
-                        poseOk = detection.detection.score > 0.6 && Math.abs(yaw) < 10;
+                        poseOk = detection.detection.score > 0.6 && Math.abs(yaw) < 10 && blinkCountRef.current >= 1;
                     } else if (currentStage >= 2) {
                         poseOk = detection.detection.score > 0.4 && Math.abs(yaw) >= 12;
                     } else {
@@ -346,7 +366,7 @@ export default function FaceEnrollment({ hasEnrolled }: { hasEnrolled: boolean }
                                                 {STAGES[stageIndex]?.label}
                                             </h2>
                                             <p className="text-white bg-black/70 px-5 py-2 rounded-full text-base font-medium shadow-md">
-                                                {capturingRef.current ? 'Tertangkap! Bersiap ke pose berikutnya...' : STAGES[stageIndex]?.instruction}
+                                                {capturingRef.current ? 'Tertangkap! Bersiap ke pose berikutnya...' : (stageIndex === 0 && !hasBlinked ? 'Berkedip untuk verifikasi...' : STAGES[stageIndex]?.instruction)}
                                             </p>
                                         </div>
                                     )}

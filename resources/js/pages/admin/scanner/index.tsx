@@ -2,7 +2,11 @@ import { Head, Link } from '@inertiajs/react';
 import * as faceapi from '@vladmandic/face-api';
 import { Camera, CheckCircle, Loader2, Maximize, AlertCircle, XCircle, Sun, Moon } from 'lucide-react';
 import React, { useEffect, useRef, useState } from 'react';
+import { estimateEAR, isEyeClosed } from '@/lib/liveness';
 import { attendance, embeddings } from '@/routes/admin/scanner';
+
+const LIVENESS_WINDOW_MS = 10000;
+const BLINK_CLOSED_FRAMES = 2;
 
 // Note: import.meta.env.BASE_URL compiles to '/build/' in production (the asset base),
 // so static app paths like /models must stay root-relative - do NOT prefix them with BASE_URL.
@@ -59,6 +63,8 @@ export default function FaceScanner() {
     const alreadyPresentUsersRef = useRef<Set<number>>(new Set());
     const logsRef = useRef<LogEntry[]>([]);
     const detectLoopIdRef = useRef<number>(0);
+    const lastBlinkRef = useRef<{ [key: number]: number }>({});
+    const closedFramesRef = useRef<{ [key: number]: number }>({});
     
     useEffect(() => {
         logsRef.current = logs;
@@ -255,19 +261,39 @@ export default function FaceScanner() {
                       if (faceMatcher) {
                           const bestMatch = faceMatcher.findBestMatch(detection.descriptor);
                           
-                          if (bestMatch.label !== 'unknown' && bestMatch.distance < 0.55) {
+                      if (bestMatch.label !== 'unknown' && bestMatch.distance < 0.55) {
                               const user = JSON.parse(bestMatch.label);
                               const firstName = user.name.split(' ')[0];
-                              
-                              if (alreadyPresentUsersRef.current.has(user.id)) {
+
+                              // Liveness: only accept a face that blinked within the last few seconds
+                              const ear = estimateEAR(detection.landmarks);
+
+                              if (isEyeClosed(ear)) {
+                                  closedFramesRef.current[user.id] = (closedFramesRef.current[user.id] || 0) + 1;
+                              } else {
+                                  if ((closedFramesRef.current[user.id] || 0) >= BLINK_CLOSED_FRAMES) {
+                                      lastBlinkRef.current[user.id] = Date.now();
+                                  }
+
+                                  closedFramesRef.current[user.id] = 0;
+                              }
+
+                              const isLive = Date.now() - (lastBlinkRef.current[user.id] || 0) < LIVENESS_WINDOW_MS;
+
+                              if (!isLive) {
+                                  drawColor = '#60A5FA'; // Blue - waiting for blink verification
+                                  labelText = `${firstName} (kedip)`;
+                              } else if (alreadyPresentUsersRef.current.has(user.id)) {
                                   drawColor = '#FBBF24'; // Yellow
                                   labelText = `${firstName} (Recorded)`;
                               } else {
                                   drawColor = '#10B981'; // Green for Recognized
                                   labelText = firstName;
                               }
-  
-                              processAttendance(user, bestMatch.distance);
+
+                              if (isLive) {
+                                  processAttendance(user, bestMatch.distance);
+                              }
                           }
                       }
   
@@ -304,6 +330,12 @@ export default function FaceScanner() {
 
     const processAttendance = (user: FaceEmbedding['user'], distance: number) => {
         const now = Date.now();
+
+        // Liveness gate: never record for a face that has not blinked recently (e.g. a printed photo)
+        if (now - (lastBlinkRef.current[user.id] || 0) >= LIVENESS_WINDOW_MS) {
+            return;
+        }
+
         const lastSeen = lastRecognizedRef.current[user.id] || 0;
 
         // Prevent logging the same user if they were seen in the last 15 seconds
