@@ -36,4 +36,18 @@ class SessionController extends Controller
             'sessions' => $sessions,
         ]);
     }
+
+    public function show($date)
+    {
+        // Get all attendances for the selected date
+        $attendances = Attendance::with(['user.classroom.major'])
+            ->where('date', $date)
+            ->get();
+
+        // Pass to the view
+        return Inertia::render('admin/sessions/show', [
+            'date' => $date,
+            'attendances' => $attendances,
+        ]);
+    }
 }

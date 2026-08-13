@@ -140,6 +140,7 @@ Route::middleware(['auth', 'verified', \App\Http\Middleware\CheckActivation::cla
         
         // Modules
         Route::get('/admin/sessions', [\App\Http\Controllers\Admin\SessionController::class, 'index'])->name('admin.sessions');
+        Route::get('/admin/sessions/{date}', [\App\Http\Controllers\Admin\SessionController::class, 'show'])->name('admin.sessions.show');
         Route::get('/admin/alerts', [\App\Http\Controllers\Admin\AlertController::class, 'index'])->name('admin.alerts');
         Route::post('/admin/alerts/{alert}/resolve', [\App\Http\Controllers\Admin\AlertController::class, 'resolve'])->name('admin.alerts.resolve');
         Route::get('/admin/reports', [\App\Http\Controllers\Admin\ReportController::class, 'index'])->name('admin.reports');
