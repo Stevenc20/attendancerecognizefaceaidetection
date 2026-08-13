@@ -145,6 +145,7 @@ export default function DashboardLayout({ role, userName, children }: DashboardL
             {/* Sidebar — fixed on desktop, drawer on mobile */}
             <aside
                 className={`
+                    print:hidden
                     fixed inset-y-0 left-0 z-50 flex flex-col bg-[#FAFAFA]
                     border-r border-[#E5E5E2] h-[100dvh]
                     transition-all duration-300 ease-in-out
@@ -267,11 +268,11 @@ export default function DashboardLayout({ role, userName, children }: DashboardL
 
             {/* Main content — scrolls independently */}
             <div
-                className="min-h-screen flex flex-col transition-all duration-300 ease-in-out"
+                className={`transition-all duration-300 ease-in-out ${sidebarOpen ? 'lg:pl-64' : 'lg:pl-0'} print:pl-0 min-h-screen flex flex-col`}
                 style={{ marginLeft: `${sidebarWidth}px` }}
             >
                 {/* Minimal top bar */}
-                <header className="h-12 bg-white/80 backdrop-blur-md border-b border-[#E5E5E2] flex items-center px-5 lg:px-8 sticky top-0 z-30 flex-shrink-0">
+                <header className="print:hidden h-12 bg-white/80 backdrop-blur-md border-b border-[#E5E5E2] flex items-center px-5 lg:px-8 sticky top-0 z-30 flex-shrink-0">
                     <button 
                         className="mr-3 lg:hidden text-[#6B6F76] hover:text-[#111318]"
                         onClick={() => setSidebarOpen(true)}

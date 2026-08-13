@@ -1,6 +1,7 @@
 import { Head, usePage } from '@inertiajs/react';
 import DashboardLayout from '@/layouts/dashboard-layout';
-import { BarChart3, Download } from 'lucide-react';
+import { BarChart3, Download, Printer } from 'lucide-react';
+import React from 'react';
 
 export default function TeacherReports() {
     const { auth, homeroomClass, reportData } = usePage().props as any;
@@ -9,11 +10,44 @@ export default function TeacherReports() {
 
     const currentMonth = new Date().toLocaleString('en-US', { month: 'long', year: 'numeric' });
 
+    const handleExport = () => {
+        if (!reportData || reportData.length === 0) return;
+        
+        let csv = 'Student Name,NIS,Present,Late,Absent,Attendance Rate\n';
+        reportData.forEach((row: any) => {
+            const total = row.total_sessions || 1;
+            const rate = Math.round(((row.present + row.late) / total) * 100);
+            csv += `"${row.student.name}","${row.student.nis}",${row.present},${row.late},${row.absent},"${rate}%"\n`;
+        });
+        
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `Report_${homeroomClass?.name}_${currentMonth.replace(' ', '_')}.csv`;
+        a.click();
+        window.URL.revokeObjectURL(url);
+    };
+
+    const handlePrint = () => {
+        window.print();
+    };
+
     return (
         <DashboardLayout role={role} userName={user.name}>
             <Head title="Class Reports" />
 
-            <header className="mb-6 flex flex-col md:flex-row md:items-end justify-between gap-4">
+            <style>{`
+                @media print {
+                    @page { size: landscape; margin: 15mm; }
+                    body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+                    aside { display: none !important; }
+                    div[style*="margin-left"] { margin-left: 0 !important; }
+                    header.print\\:hidden { display: none !important; }
+                }
+            `}</style>
+
+            <header className="mb-6 flex flex-col md:flex-row md:items-end justify-between gap-4 print:hidden">
                 <div>
                     <p className="text-[12px] font-medium text-[#6B6F76] uppercase tracking-[0.1em] mb-1">
                         Teacher
@@ -23,10 +57,16 @@ export default function TeacherReports() {
                     </h1>
                 </div>
                 {homeroomClass && (
-                    <button className="inline-flex items-center gap-2 bg-[#111318] hover:bg-[#20242D] text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors">
-                        <Download size={16} />
-                        Export to Excel
-                    </button>
+                    <div className="flex gap-2">
+                        <button onClick={handlePrint} className="inline-flex items-center gap-2 bg-white border border-gray-200 hover:bg-gray-50 text-[#111318] px-4 py-2 rounded-lg text-sm font-semibold transition-colors">
+                            <Printer size={16} />
+                            Print Report
+                        </button>
+                        <button onClick={handleExport} className="inline-flex items-center gap-2 bg-[#111318] hover:bg-[#20242D] text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors">
+                            <Download size={16} />
+                            Export CSV
+                        </button>
+                    </div>
                 )}
             </header>
 
