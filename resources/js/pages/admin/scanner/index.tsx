@@ -37,6 +37,7 @@ type LogEntry = {
     user: FaceEmbedding['user'];
     status: 'success' | 'already' | 'error';
     message: string;
+    count: number;
 };
 
 export default function FaceScanner() {
@@ -312,6 +313,29 @@ export default function FaceScanner() {
 
         lastRecognizedRef.current[user.id] = now;
 
+        if (alreadyPresentUsersRef.current.has(user.id)) {
+            const existing = logsRef.current.find(l => l.user.id === user.id && l.status !== 'error');
+
+            if (existing) {
+                setLogs(prev => prev.map(l => l.id === existing.id ? { ...l, count: l.count + 1, status: 'already', message: 'Already Present' } : l));
+            } else {
+                const time = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+                const alreadyLog: LogEntry = {
+                    id: Math.random().toString(36).substring(7),
+                    time,
+                    user,
+                    status: 'already',
+                    message: 'Already Present',
+                    count: 1
+                };
+
+                setLogs(prev => [alreadyLog, ...prev].slice(0, 8));
+            }
+
+            return;
+        }
+
         // Play sound
         const audio = new Audio('/sounds/ding.mp3'); // We'll assume a sound file exists or just let it fail silently
         audio.play().catch(e => {});
@@ -325,7 +349,8 @@ export default function FaceScanner() {
             time,
             user,
             status: 'success',
-            message: 'Recorded'
+            message: 'Recorded',
+            count: 1
         };
 
         setLogs(prev => [newLog, ...prev].slice(0, 8)); // Keep last 8
@@ -495,9 +520,20 @@ export default function FaceScanner() {
                                 <div key={log.id} className={`border rounded-xl p-3 transform transition-all duration-300 animate-in fade-in slide-in-from-right-4 ${theme === 'dark' ? 'bg-white/5 border-white/10' : 'bg-white border-gray-200 shadow-sm'}`}>
                                     <div className="flex justify-between items-start mb-2">
                                         <span className={`text-xs font-mono ${theme === 'dark' ? 'text-white/50' : 'text-gray-500'}`}>{log.time}</span>
-                                        {log.status === 'success' && <CheckCircle className="text-emerald-500" size={14} />}
-                                        {log.status === 'already' && <CheckCircle className="text-amber-500" size={14} />}
-                                        {log.status === 'error' && <AlertCircle className="text-red-500" size={14} />}
+                                        <div className="flex items-center gap-2">
+                                            {log.count > 1 && (
+                                                <span className={`text-xs font-semibold px-1.5 py-0.5 rounded ${
+                                                    log.status === 'success' ? (theme === 'dark' ? 'bg-emerald-500/20 text-emerald-300' : 'bg-emerald-100 text-emerald-700') :
+                                                    log.status === 'already' ? (theme === 'dark' ? 'bg-amber-500/20 text-amber-300' : 'bg-amber-100 text-amber-700') :
+                                                    (theme === 'dark' ? 'bg-red-500/20 text-red-300' : 'bg-red-100 text-red-700')
+                                                }`}>
+                                                    {log.count}x
+                                                </span>
+                                            )}
+                                            {log.status === 'success' && <CheckCircle className="text-emerald-500" size={14} />}
+                                            {log.status === 'already' && <CheckCircle className="text-amber-500" size={14} />}
+                                            {log.status === 'error' && <AlertCircle className="text-red-500" size={14} />}
+                                        </div>
                                     </div>
                                     <div className={`font-bold text-sm mb-1 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{log.user.name}</div>
                                     {log.user.classroom && (
