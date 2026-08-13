@@ -42,7 +42,7 @@ export default function TeacherDashboard() {
         };
 
         return (
-            <button onClick={handleToggle} className="w-8 h-8 rounded-full hover:bg-gray-100 flex items-center justify-center transition-colors focus:outline-none" title={`Click to change. Current: ${status}`}>
+            <button onClick={handleToggle} className="mx-auto w-8 h-8 rounded-full hover:bg-gray-100 flex items-center justify-center transition-colors focus:outline-none" title={`Click to change. Current: ${status}`}>
                 {icon}
             </button>
         );
