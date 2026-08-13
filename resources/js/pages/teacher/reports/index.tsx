@@ -237,7 +237,7 @@ export default function TeacherReports() {
                                 {hasSignature && (
                                     <button 
                                         onClick={clearSignature} 
-                                        className="absolute -right-2 -top-2 bg-gray-100 hover:bg-red-100 text-gray-500 hover:text-red-600 rounded-full p-1.5 text-[10px] opacity-0 group-hover:opacity-100 transition-all print:hidden z-20"
+                                        className="absolute -right-3 -top-3 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 rounded-full w-8 h-8 flex items-center justify-center text-sm shadow-sm transition-all print:hidden z-20"
                                         title="Clear Signature"
                                     >
                                         ❌
