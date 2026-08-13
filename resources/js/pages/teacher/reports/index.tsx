@@ -1,4 +1,4 @@
-import { Head, usePage } from '@inertiajs/react';
+import { Head, usePage, router } from '@inertiajs/react';
 import DashboardLayout from '@/layouts/dashboard-layout';
 import { BarChart3, Download, Printer } from 'lucide-react';
 import React, { useState, useRef } from 'react';
@@ -9,28 +9,25 @@ export default function TeacherReports() {
     const role = user.role || 'teacher';
 
     const currentMonth = new Date().toLocaleString('en-US', { month: 'long', year: 'numeric' });
-    const storageKey = `signature_${user.id}`;
 
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const [isDrawing, setIsDrawing] = useState(false);
-    const [hasSignature, setHasSignature] = useState(false);
-    const [signatureData, setSignatureData] = useState<string | null>(null);
+    const [hasSignature, setHasSignature] = useState(!!user.signature);
+    const [signatureData, setSignatureData] = useState<string | null>(user.signature || null);
+    const [isSaving, setIsSaving] = useState(false);
 
     React.useEffect(() => {
-        const saved = localStorage.getItem(storageKey);
-        if (saved) {
-            setSignatureData(saved);
-            setHasSignature(true);
+        if (signatureData) {
             const ctx = canvasRef.current?.getContext('2d');
             if (ctx && canvasRef.current) {
                 const img = new Image();
                 img.onload = () => {
                     ctx.drawImage(img, 0, 0, canvasRef.current!.width, canvasRef.current!.height);
                 };
-                img.src = saved;
+                img.src = signatureData;
             }
         }
-    }, [storageKey]);
+    }, [signatureData]);
 
     const startDrawing = (e: any) => {
         if (!canvasRef.current) return;
@@ -56,10 +53,8 @@ export default function TeacherReports() {
         setIsDrawing(false);
         if (canvasRef.current) {
             canvasRef.current.getContext('2d')?.beginPath();
-            // Automatically save to image for printing compatibility and persistence
             const dataUrl = canvasRef.current.toDataURL('image/png');
             setSignatureData(dataUrl);
-            localStorage.setItem(storageKey, dataUrl);
         }
     };
 
@@ -92,8 +87,19 @@ export default function TeacherReports() {
             ctx?.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
             setHasSignature(false);
             setSignatureData(null);
-            localStorage.removeItem(storageKey);
+            
+            // Auto delete from DB as well
+            router.post(route('teacher.signature'), { signature: null }, { preserveScroll: true });
         }
+    };
+
+    const saveSignatureToDB = () => {
+        if (!signatureData) return;
+        setIsSaving(true);
+        router.post(route('teacher.signature'), { signature: signatureData }, {
+            preserveScroll: true,
+            onFinish: () => setIsSaving(false),
+        });
     };
 
     const handleExport = () => {
@@ -256,12 +262,22 @@ export default function TeacherReports() {
                                     )}
                                 </div>
                                 {hasSignature && (
-                                    <button 
-                                        onClick={clearSignature} 
-                                        className="w-full mt-2 py-2 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 rounded-b-lg text-xs font-bold transition-all print:hidden flex items-center justify-center gap-1"
-                                    >
-                                        <span>🗑️</span> Hapus Tanda Tangan
-                                    </button>
+                                    <div className="flex gap-2 mt-2">
+                                        <button 
+                                            onClick={saveSignatureToDB} 
+                                            disabled={isSaving}
+                                            className="flex-1 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-b-lg text-xs font-bold transition-all print:hidden flex items-center justify-center gap-1 disabled:opacity-50"
+                                        >
+                                            <span>✅</span> {isSaving ? 'Menyimpan...' : 'Simpan Tanda Tangan'}
+                                        </button>
+                                        <button 
+                                            onClick={clearSignature} 
+                                            className="px-3 py-2 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 rounded-b-lg text-xs font-bold transition-all print:hidden flex items-center justify-center"
+                                            title="Hapus"
+                                        >
+                                            🗑️
+                                        </button>
+                                    </div>
                                 )}
                             </div>
 

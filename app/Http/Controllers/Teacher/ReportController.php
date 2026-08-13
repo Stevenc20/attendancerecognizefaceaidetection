@@ -60,4 +60,17 @@ class ReportController extends Controller
             'reportData' => $reportData,
         ]);
     }
+
+    public function saveSignature(Request $request)
+    {
+        $request->validate([
+            'signature' => 'nullable|string',
+        ]);
+
+        $user = Auth::user();
+        $user->signature = $request->signature;
+        $user->save();
+
+        return redirect()->back()->with('success', 'Signature saved successfully.');
+    }
 }

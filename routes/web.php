@@ -154,6 +154,7 @@ Route::middleware(['auth', 'verified', \App\Http\Middleware\CheckActivation::cla
         Route::get('/teacher/classes', [\App\Http\Controllers\Teacher\ClassController::class, 'index'])->name('teacher.classes');
         Route::get('/teacher/sessions', [\App\Http\Controllers\Teacher\SessionController::class, 'index'])->name('teacher.sessions');
         Route::get('/teacher/reports', [\App\Http\Controllers\Teacher\ReportController::class, 'index'])->name('teacher.reports');
+        Route::post('/teacher/signature', [\App\Http\Controllers\Teacher\ReportController::class, 'saveSignature'])->name('teacher.signature');
     });
 });
 

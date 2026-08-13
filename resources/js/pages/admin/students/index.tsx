@@ -147,7 +147,7 @@ export default function StudentsManagement({ students, classrooms, filters }: St
                         value={search}
                         onChange={e => setSearch(e.target.value)}
                         onKeyDown={handleKeyDown}
-                        className="w-full h-[40px] px-4 rounded-xl border border-gray-200 text-[14px] outline-none focus:border-[#D40000]"
+                        className="w-full h-[40px] px-4 rounded-xl border border-gray-200 text-[14px] text-[#111318] bg-white outline-none focus:border-[#D40000]"
                     />
                 </div>
                 <div className="w-[250px]">
