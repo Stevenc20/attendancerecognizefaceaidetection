@@ -1,5 +1,4 @@
-import { Head, Link } from '@inertiajs/react';
-import axios from 'axios';
+import { Head, Link, router } from '@inertiajs/react';
 import * as faceapi from '@vladmandic/face-api';
 import { Camera, CheckCircle, Loader2, Maximize, AlertCircle, XCircle, Sun, Moon } from 'lucide-react';
 import React, { useEffect, useRef, useState } from 'react';
@@ -247,7 +246,14 @@ export default function FaceScanner() {
             lastAlertTimeRef.current[type] = now;
             
             try {
-                await axios.post('/admin/alerts', { type, description });
+                await fetch('/admin/alerts', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
+                    },
+                    body: JSON.stringify({ type, description })
+                });
             } catch (err) {
                 console.error("Failed to send security alert", err);
             }
