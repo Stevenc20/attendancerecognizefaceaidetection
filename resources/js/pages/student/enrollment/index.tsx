@@ -4,6 +4,18 @@ import DashboardLayout from '@/layouts/dashboard-layout';
 import * as faceapi from '@vladmandic/face-api';
 import { Camera, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
 
+const estimateYaw = (landmarks: faceapi.FaceLandmarks68): number => {
+    const positions = landmarks.positions;
+    const leftEye = positions[36];
+    const rightEye = positions[45];
+    const noseTip = positions[30];
+    const eyeDist = Math.hypot(rightEye.x - leftEye.x, rightEye.y - leftEye.y);
+    const midEyesX = (leftEye.x + rightEye.x) / 2;
+    const offset = noseTip.x - midEyesX;
+
+    return (Math.asin(Math.max(-1, Math.min(1, offset / eyeDist))) * 180) / Math.PI;
+};
+
 export default function FaceEnrollment({ hasEnrolled }: { hasEnrolled: boolean }) {
     const { auth } = usePage().props as any;
     const videoRef = useRef<HTMLVideoElement>(null);
@@ -27,6 +39,28 @@ export default function FaceEnrollment({ hasEnrolled }: { hasEnrolled: boolean }
     const capturingRef = useRef(false);
     const descriptorsRef = useRef<Float32Array[]>([]);
     const stableFramesRef = useRef(0);
+    const bestScoreRef = useRef(0);
+    const bestDescriptorRef = useRef<Float32Array | null>(null);
+    const fallbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const fallbackReadyRef = useRef(false);
+
+    const clearFallback = () => {
+        if (fallbackTimerRef.current !== null) {
+            clearTimeout(fallbackTimerRef.current);
+            fallbackTimerRef.current = null;
+        }
+
+        fallbackReadyRef.current = false;
+    };
+
+    const scheduleFallback = () => {
+        clearFallback();
+        bestScoreRef.current = 0;
+        bestDescriptorRef.current = null;
+        fallbackTimerRef.current = setTimeout(() => {
+            fallbackReadyRef.current = true;
+        }, 4000);
+    };
     
     const [wantsToRetake, setWantsToRetake] = useState(false);
 
@@ -58,6 +92,10 @@ export default function FaceEnrollment({ hasEnrolled }: { hasEnrolled: boolean }
     // Cleanup camera on unmount
     useEffect(() => {
         return () => {
+            if (fallbackTimerRef.current !== null) {
+                clearTimeout(fallbackTimerRef.current);
+            }
+
             if (videoRef.current && videoRef.current.srcObject) {
                 const s = videoRef.current.srcObject as MediaStream;
                 s.getTracks().forEach(track => track.stop());
@@ -71,6 +109,7 @@ export default function FaceEnrollment({ hasEnrolled }: { hasEnrolled: boolean }
                 video: { width: 720, height: 720 } 
             });
             setStream(mediaStream);
+
             if (videoRef.current) {
                 videoRef.current.srcObject = mediaStream;
             }
@@ -94,6 +133,7 @@ export default function FaceEnrollment({ hasEnrolled }: { hasEnrolled: boolean }
         descriptorsRef.current = [];
         capturingRef.current = false;
         stableFramesRef.current = 0;
+        scheduleFallback();
         setStageIndex(0);
         
         let isLooping = true;
@@ -108,6 +148,7 @@ export default function FaceEnrollment({ hasEnrolled }: { hasEnrolled: boolean }
             
             if (video.videoWidth === 0 || video.videoHeight === 0) {
                 requestAnimationFrame(detectFace);
+
                 return;
             }
             
@@ -116,7 +157,7 @@ export default function FaceEnrollment({ hasEnrolled }: { hasEnrolled: boolean }
 
             try {
                 // Use TinyFaceDetector for performance so UI doesn't lag
-                const detection = await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions({ inputSize: 608, scoreThreshold: 0.3 }))
+                const detection = await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions({ inputSize: 608, scoreThreshold: 0.2 }))
                     .withFaceLandmarks()
                     .withFaceDescriptor();
 
@@ -129,9 +170,20 @@ export default function FaceEnrollment({ hasEnrolled }: { hasEnrolled: boolean }
                     // Draw face landmarks (mesh) instead of static circle
                     faceapi.draw.drawFaceLandmarks(canvas, resizedDetections);
 
-                    const shouldCapture = detection.detection.score > 0.6 && !capturingRef.current;
+                    const currentStage = descriptorsRef.current.length;
+                    const yaw = estimateYaw(detection.landmarks);
 
-                    if (shouldCapture && descriptorsRef.current.length === 0) {
+                    let poseOk = false;
+
+                    if (currentStage === 0) {
+                        poseOk = detection.detection.score > 0.6 && Math.abs(yaw) < 10;
+                    } else if (currentStage >= 2) {
+                        poseOk = detection.detection.score > 0.4 && Math.abs(yaw) >= 12;
+                    } else {
+                        poseOk = detection.detection.score > 0.6;
+                    }
+
+                    if (currentStage === 0 && poseOk) {
                         // Require a few consecutive stable frames for the first (frontal) pose
                         // so the descriptor is clean and improves scanner matching later.
                         stableFramesRef.current += 1;
@@ -139,20 +191,31 @@ export default function FaceEnrollment({ hasEnrolled }: { hasEnrolled: boolean }
                         stableFramesRef.current = 0;
                     }
 
-                    if (shouldCapture && (descriptorsRef.current.length > 0 || stableFramesRef.current >= 3)) {
+                    if (currentStage > 0 && detection.detection.score > 0.35 && detection.detection.score > bestScoreRef.current) {
+                        bestScoreRef.current = detection.detection.score;
+                        bestDescriptorRef.current = detection.descriptor;
+                    }
+
+                    const stageReady = poseOk && (currentStage > 0 || stableFramesRef.current >= 3);
+                    const timedOut = fallbackReadyRef.current && currentStage > 0 && bestDescriptorRef.current !== null;
+
+                    if ((stageReady || timedOut) && !capturingRef.current) {
                         capturingRef.current = true;
-                        const currentDescriptors = [...descriptorsRef.current, detection.descriptor];
+                        const descriptor = timedOut ? bestDescriptorRef.current! : detection.descriptor;
+                        const currentDescriptors = [...descriptorsRef.current, descriptor];
                         descriptorsRef.current = currentDescriptors;
                         
                         if (currentDescriptors.length >= STAGES.length) {
                             setStatus('Proses selesai! Menyimpan data...');
                             isLooping = false;
+                            clearFallback();
                             captureFaceData(currentDescriptors);
                         } else {
                             const nextStage = currentDescriptors.length;
                             stageIndexRef.current = nextStage;
                             setStageIndex(nextStage);
                             setStatus(STAGES[nextStage].label);
+                            scheduleFallback();
                             
                             setTimeout(() => {
                                 capturingRef.current = false;
