@@ -26,6 +26,7 @@ export default function FaceEnrollment({ hasEnrolled }: { hasEnrolled: boolean }
     const stageIndexRef = useRef(0);
     const capturingRef = useRef(false);
     const descriptorsRef = useRef<Float32Array[]>([]);
+    const stableFramesRef = useRef(0);
     
     const [wantsToRetake, setWantsToRetake] = useState(false);
 
@@ -37,7 +38,7 @@ export default function FaceEnrollment({ hasEnrolled }: { hasEnrolled: boolean }
         const loadModels = async () => {
             try {
                 await Promise.all([
-                    faceapi.nets.ssdMobilenetv1.loadFromUri('/models'),
+                    faceapi.nets.tinyFaceDetector.loadFromUri('/models'),
                     faceapi.nets.faceLandmark68Net.loadFromUri('/models'),
                     faceapi.nets.faceRecognitionNet.loadFromUri('/models')
                 ]);
@@ -92,6 +93,7 @@ export default function FaceEnrollment({ hasEnrolled }: { hasEnrolled: boolean }
         stageIndexRef.current = 0;
         descriptorsRef.current = [];
         capturingRef.current = false;
+        stableFramesRef.current = 0;
         setStageIndex(0);
         
         let isLooping = true;
@@ -113,8 +115,8 @@ export default function FaceEnrollment({ hasEnrolled }: { hasEnrolled: boolean }
             faceapi.matchDimensions(canvas, displaySize);
 
             try {
-                // Use ssdMobilenetv1 which has much better landmark tracking and accuracy
-                const detection = await faceapi.detectSingleFace(video, new faceapi.SsdMobilenetv1Options({ minConfidence: 0.5 }))
+                // Use TinyFaceDetector for performance so UI doesn't lag
+                const detection = await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions({ inputSize: 608, scoreThreshold: 0.3 }))
                     .withFaceLandmarks()
                     .withFaceDescriptor();
 
@@ -126,8 +128,18 @@ export default function FaceEnrollment({ hasEnrolled }: { hasEnrolled: boolean }
                     
                     // Draw face landmarks (mesh) instead of static circle
                     faceapi.draw.drawFaceLandmarks(canvas, resizedDetections);
-                    
-                    if (detection.detection.score > 0.85 && !capturingRef.current) {
+
+                    const shouldCapture = detection.detection.score > 0.6 && !capturingRef.current;
+
+                    if (shouldCapture && descriptorsRef.current.length === 0) {
+                        // Require a few consecutive stable frames for the first (frontal) pose
+                        // so the descriptor is clean and improves scanner matching later.
+                        stableFramesRef.current += 1;
+                    } else {
+                        stableFramesRef.current = 0;
+                    }
+
+                    if (shouldCapture && (descriptorsRef.current.length > 0 || stableFramesRef.current >= 3)) {
                         capturingRef.current = true;
                         const currentDescriptors = [...descriptorsRef.current, detection.descriptor];
                         descriptorsRef.current = currentDescriptors;
@@ -144,17 +156,19 @@ export default function FaceEnrollment({ hasEnrolled }: { hasEnrolled: boolean }
                             
                             setTimeout(() => {
                                 capturingRef.current = false;
-                            }, 2000);
+                            }, 800);
                         }
                     }
+                } else {
+                    stableFramesRef.current = 0;
                 }
             } catch (err) {
                 console.error(err);
             }
             
             if (isLooping) {
-                // Use setTimeout to slightly throttle to ~15fps for performance, while keeping it much smoother than 3fps
-                setTimeout(() => requestAnimationFrame(detectFace), 50);
+                // Use setTimeout to slightly throttle for performance while keeping it smooth
+                setTimeout(() => requestAnimationFrame(detectFace), 30);
             }
         };
 

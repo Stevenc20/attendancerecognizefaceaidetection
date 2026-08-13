@@ -12,7 +12,12 @@ export default function AdminDashboard({ metrics, recentActivity }: { metrics: a
 
     const activeSessions: any[] = []; // Hidden for now
 
-    const shortcuts = ['Add Student', 'Create Session', 'View Reports', 'Security Alerts'];
+    const shortcuts = [
+        { label: 'Add Student', href: '/admin/students' },
+        { label: 'Create Session', href: '/admin/sessions' },
+        { label: 'View Reports', href: '/admin/reports' },
+        { label: 'Security Alerts', href: '/admin/alerts' },
+    ];
 
     return (
         <DashboardLayout role={role} userName={user.name}>
@@ -131,8 +136,8 @@ export default function AdminDashboard({ metrics, recentActivity }: { metrics: a
                 </span>
                 <div className="flex flex-wrap gap-2">
                     {shortcuts.map((s) => (
-                        <a key={s} href="#" className="flex items-center gap-1 text-[12px] font-semibold text-[#111318] bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-lg px-3 py-1.5 transition-colors">
-                            {s}
+                        <a key={s.label} href={s.href} className="flex items-center gap-1 text-[12px] font-semibold text-[#111318] bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-lg px-3 py-1.5 transition-colors">
+                            {s.label}
                             <ArrowUpRight size={12} className="text-[#6B6F76]" />
                         </a>
                     ))}
