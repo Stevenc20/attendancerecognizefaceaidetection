@@ -247,9 +247,41 @@ export default function TeacherReports() {
             {isSigning && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4 print:hidden backdrop-blur-sm">
                     <div className="bg-white rounded-xl shadow-lg p-6 max-w-md w-full">
-                        <h3 className="font-bold text-lg text-[#111318] mb-4">Draw Your Signature</h3>
-                        <p className="text-sm text-[#6B6F76] mb-4">Sign below using your mouse or touch screen. This will be attached to your report for printing.</p>
-                        <div className="border border-gray-200 rounded-lg bg-gray-50 mb-4 overflow-hidden touch-none">
+                        <h3 className="font-bold text-lg text-[#111318] mb-4">Add Digital Signature</h3>
+                        <p className="text-sm text-[#6B6F76] mb-4">Upload a transparent PNG image of your signature, or draw one below. It will be attached to your report for printing.</p>
+                        
+                        {/* UPLOAD FILE */}
+                        <div className="mb-4">
+                            <label className="block w-full border-2 border-dashed border-gray-300 rounded-lg p-4 text-center cursor-pointer hover:bg-gray-50 transition-colors">
+                                <span className="text-sm font-semibold text-[#111318] block mb-1">📁 Upload Signature Image</span>
+                                <span className="text-xs text-[#6B6F76]">Click to select a .PNG or .JPG file</span>
+                                <input 
+                                    type="file" 
+                                    accept="image/*" 
+                                    className="hidden" 
+                                    onChange={(e) => {
+                                        const file = e.target.files?.[0];
+                                        if (file) {
+                                            const reader = new FileReader();
+                                            reader.onload = (event) => {
+                                                setSignature(event.target?.result as string);
+                                                setIsSigning(false);
+                                            };
+                                            reader.readAsDataURL(file);
+                                        }
+                                    }} 
+                                />
+                            </label>
+                        </div>
+
+                        <div className="flex items-center justify-center gap-2 mb-4">
+                            <hr className="w-full border-gray-200" />
+                            <span className="text-xs text-gray-400 font-medium">OR DRAW</span>
+                            <hr className="w-full border-gray-200" />
+                        </div>
+
+                        {/* CANVAS */}
+                        <div className="border border-gray-200 rounded-lg bg-gray-50 mb-4 overflow-hidden touch-none relative">
                             <canvas
                                 ref={canvasRef}
                                 width={384}
@@ -265,10 +297,10 @@ export default function TeacherReports() {
                             />
                         </div>
                         <div className="flex justify-between items-center">
-                            <button onClick={clearSignature} className="px-4 py-2 text-sm font-semibold text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors">Clear</button>
+                            <button onClick={clearSignature} className="px-4 py-2 text-sm font-semibold text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors">Clear Drawing</button>
                             <div className="flex gap-2">
                                 <button onClick={() => setIsSigning(false)} className="px-4 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">Cancel</button>
-                                <button onClick={saveSignature} className="px-4 py-2 text-sm font-semibold text-white bg-[#111318] hover:bg-[#20242D] rounded-lg transition-colors">Save Signature</button>
+                                <button onClick={saveSignature} className="px-4 py-2 text-sm font-semibold text-white bg-[#111318] hover:bg-[#20242D] rounded-lg transition-colors">Save Drawing</button>
                             </div>
                         </div>
                     </div>
