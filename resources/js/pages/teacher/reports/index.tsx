@@ -115,10 +115,6 @@ export default function TeacherReports() {
         window.URL.revokeObjectURL(url);
     };
 
-    const handlePrint = () => {
-        window.print();
-    };
-
     return (
         <DashboardLayout role={role} userName={user.name}>
             <Head title="Class Reports" />
@@ -144,10 +140,6 @@ export default function TeacherReports() {
                 </div>
                 {homeroomClass && (
                     <div className="flex gap-2">
-                        <button onClick={handlePrint} className="inline-flex items-center gap-2 bg-white border border-gray-200 hover:bg-gray-50 text-[#111318] px-4 py-2 rounded-lg text-sm font-semibold transition-colors">
-                            <Printer size={16} />
-                            Print Report
-                        </button>
                         <button onClick={handleExport} className="inline-flex items-center gap-2 bg-[#111318] hover:bg-[#20242D] text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors">
                             <Download size={16} />
                             Export CSV
