@@ -9,11 +9,28 @@ export default function TeacherReports() {
     const role = user.role || 'teacher';
 
     const currentMonth = new Date().toLocaleString('en-US', { month: 'long', year: 'numeric' });
+    const storageKey = `signature_${user.id}`;
 
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const [isDrawing, setIsDrawing] = useState(false);
     const [hasSignature, setHasSignature] = useState(false);
     const [signatureData, setSignatureData] = useState<string | null>(null);
+
+    React.useEffect(() => {
+        const saved = localStorage.getItem(storageKey);
+        if (saved) {
+            setSignatureData(saved);
+            setHasSignature(true);
+            const ctx = canvasRef.current?.getContext('2d');
+            if (ctx && canvasRef.current) {
+                const img = new Image();
+                img.onload = () => {
+                    ctx.drawImage(img, 0, 0, canvasRef.current!.width, canvasRef.current!.height);
+                };
+                img.src = saved;
+            }
+        }
+    }, [storageKey]);
 
     const startDrawing = (e: any) => {
         if (!canvasRef.current) return;
@@ -39,8 +56,10 @@ export default function TeacherReports() {
         setIsDrawing(false);
         if (canvasRef.current) {
             canvasRef.current.getContext('2d')?.beginPath();
-            // Automatically save to image for printing compatibility
-            setSignatureData(canvasRef.current.toDataURL('image/png'));
+            // Automatically save to image for printing compatibility and persistence
+            const dataUrl = canvasRef.current.toDataURL('image/png');
+            setSignatureData(dataUrl);
+            localStorage.setItem(storageKey, dataUrl);
         }
     };
 
@@ -73,6 +92,7 @@ export default function TeacherReports() {
             ctx?.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
             setHasSignature(false);
             setSignatureData(null);
+            localStorage.removeItem(storageKey);
         }
     };
 
