@@ -38,7 +38,7 @@ class ReportController extends Controller
                         ->whereIn('date', $activeDates)
                         ->get();
                     
-                    $totalPresent = $attendances->whereIn('status', ['Present', 'Late'])->count();
+                    $totalPresent = $attendances->whereIn('status', ['Present', 'Late', 'present', 'late'])->count();
                     // Max possible attendances = total students * total sessions
                     $maxPossible = $totalStudents * $totalSessions;
                     $rate = $maxPossible > 0 ? round(($totalPresent / $maxPossible) * 100) : 0;
