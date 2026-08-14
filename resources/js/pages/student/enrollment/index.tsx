@@ -29,7 +29,7 @@ export default function FaceEnrollment({ hasEnrolled }: { hasEnrolled: boolean }
     const [error, setError] = useState<string | null>(null);
     
     const STAGES = [
-        { label: "Pegang HP/Kamera Anda dengan tegak", instruction: "Berkedip untuk verifikasi, lalu jangan gerak-gerak dulu..." },
+        { label: "Pegang HP/Kamera Anda dengan tegak", instruction: "Tatap lurus ke kamera dan jangan bergerak..." },
         { label: "Senyum", instruction: "Tahan senyum Anda..." },
         { label: "Tengok Kiri", instruction: "Tengok wajah sedikit ke kiri..." },
         { label: "Tengok Kanan", instruction: "Tengok wajah sedikit ke kanan..." }
@@ -196,7 +196,7 @@ export default function FaceEnrollment({ hasEnrolled }: { hasEnrolled: boolean }
                     let poseOk = false;
 
                     if (currentStage === 0) {
-                        poseOk = detection.detection.score > 0.55 && Math.abs(yaw) < 10 && blinkCountRef.current >= 1;
+                        poseOk = detection.detection.score > 0.55 && Math.abs(yaw) < 10;
                     } else if (currentStage >= 2) {
                         poseOk = detection.detection.score > 0.35 && Math.abs(yaw) >= 10;
                     } else {
@@ -366,7 +366,7 @@ export default function FaceEnrollment({ hasEnrolled }: { hasEnrolled: boolean }
                                                 {STAGES[stageIndex]?.label}
                                             </h2>
                                             <p className="text-white bg-black/70 px-5 py-2 rounded-full text-base font-medium shadow-md">
-                                                {capturingRef.current ? 'Tertangkap! Bersiap ke pose berikutnya...' : (stageIndex === 0 && !hasBlinked ? 'Berkedip untuk verifikasi...' : STAGES[stageIndex]?.instruction)}
+                                                {capturingRef.current ? 'Tertangkap! Bersiap ke pose berikutnya...' : STAGES[stageIndex]?.instruction}
                                             </p>
                                         </div>
                                     )}
