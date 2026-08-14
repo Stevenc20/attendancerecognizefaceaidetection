@@ -170,8 +170,8 @@ export default function FaceScanner() {
                         return new faceapi.LabeledFaceDescriptors(JSON.stringify(data.user), descriptorsArray);
                     });
                     
-                    // Set threshold to 0.45 (0.40 was too strict after removing blink check, causing 'Unknown' on fast enrollments)
-                    const matcher = new faceapi.FaceMatcher(labeledDescriptors, 0.45);
+                    // Set threshold back to 0.40 for strict matching (preventing false positives)
+                    const matcher = new faceapi.FaceMatcher(labeledDescriptors, 0.40);
                     setFaceMatcher(matcher);
                     setStatusText(`Synced ${embeddingsData.length} enrolled faces.`);
                 }
@@ -308,7 +308,10 @@ export default function FaceScanner() {
                       let user: any = null;
                       let distance = 0;
   
-                      if (faceMatcher) {
+                      if (box.width < 120 || box.height < 120) {
+                          drawColor = '#FBBF24'; // Yellow
+                          labelText = 'Terlalu Jauh (Maju Sedikit)';
+                      } else if (faceMatcher) {
                           const bestMatch = faceMatcher.findBestMatch(detection.descriptor);
                           
                           if (bestMatch.label === 'unknown') {
@@ -317,7 +320,7 @@ export default function FaceScanner() {
                                   sendSecurityAlert('unknown_face', 'Unknown face detected lingering in frame for an extended period.');
                                   staticFramesRef.current['unknown'] = 0;
                               }
-                          } else if (bestMatch.distance < 0.45) {
+                          } else if (bestMatch.distance < 0.40) {
                               staticFramesRef.current['unknown'] = 0; // reset unknown counter
                               user = JSON.parse(bestMatch.label);
                               distance = bestMatch.distance;
