@@ -361,17 +361,13 @@ export default function FaceScanner() {
                             }
                             
                             staticFramesRef.current[`spoof_${user.id}`] = 0; // Reset spoof tracker when live movement detected
-                            isLive = hasBlinked && hasMoved;
+                            isLive = hasMoved; // Rely purely on 3D head micro-movements for liveness (faster and more reliable than blink)
 
                             // Display Logic Priority
                             if (alreadyPresentUsersRef.current.has(user.id)) {
                                 // Already recorded today -> immediately show Yellow (no need to prove liveness again)
                                 drawColor = '#FBBF24'; // Yellow
                                 labelText = `${firstName} (Recorded)`;
-                            } else if (!hasBlinked) {
-                                // It's a real face (moving naturally) but hasn't blinked yet
-                                drawColor = '#60A5FA'; // Blue
-                                labelText = `${firstName} (kedip)`;
                             } else {
                                 // Passed liveness
                                 const now = new Date();
@@ -427,13 +423,12 @@ export default function FaceScanner() {
     const processAttendance = (user: FaceEmbedding['user'], distance: number) => {
         const now = Date.now();
 
-        // Liveness gate: never record for a face that has not blinked or moved recently
-        const hasBlinked = now - (lastBlinkRef.current[user.id] || 0) < LIVENESS_WINDOW_MS;
+        // Liveness gate: never record for a face that has not moved recently
         const history = yawHistoryRef.current[user.id] || [];
         const yawRange = history.length > 5 ? Math.max(...history) - Math.min(...history) : 0;
         const hasMoved = yawRange >= MIN_YAW_RANGE;
 
-        if (!hasBlinked || !hasMoved) {
+        if (!hasMoved) {
             return;
         }
 
