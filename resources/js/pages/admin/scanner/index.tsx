@@ -326,7 +326,7 @@ export default function FaceScanner() {
                             // Liveness 1: Blink detection (Standard threshold)
                             const ear = estimateEAR(detection.landmarks);
                             
-                            if (ear < 0.20) {
+                            if (ear < 0.24) {
                                 closedFramesRef.current[user.id] = (closedFramesRef.current[user.id] || 0) + 1;
                             } else {
                                 if ((closedFramesRef.current[user.id] || 0) >= BLINK_CLOSED_FRAMES) {
