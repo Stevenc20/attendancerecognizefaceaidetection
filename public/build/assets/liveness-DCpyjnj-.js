@@ -1,0 +1,1 @@
+var e=[36,37,38,39,40,41],t=[42,43,44,45,46,47],n=n=>{let r=n.positions,i=e=>{let[t,n,i,a,o,s]=e.map(e=>r[e]),c=Math.hypot(n.x-s.x,n.y-s.y),l=Math.hypot(i.x-o.x,i.y-o.y),u=Math.hypot(t.x-a.x,t.y-a.y);return u===0?0:(c+l)/(2*u)};return(i(e)+i(t))/2},r=(e,t=.2)=>e<t;export{r as n,n as t};

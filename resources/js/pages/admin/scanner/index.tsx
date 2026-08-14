@@ -56,6 +56,26 @@ type LogEntry = {
     count: number;
 };
 
+type TrackData = {
+    history: string[];
+    lockedIdentity: string | null;
+    lastSeen: number;
+    box: faceapi.IRect;
+};
+
+const computeIoU = (box1: faceapi.IRect, box2: faceapi.IRect) => {
+    const xA = Math.max(box1.x, box2.x);
+    const yA = Math.max(box1.y, box2.y);
+    const xB = Math.min(box1.x + box1.width, box2.x + box2.width);
+    const yB = Math.min(box1.y + box1.height, box2.y + box2.height);
+    
+    const interArea = Math.max(0, xB - xA) * Math.max(0, yB - yA);
+    const box1Area = box1.width * box1.height;
+    const box2Area = box2.width * box2.height;
+    
+    return interArea / (box1Area + box2Area - interArea);
+};
+
 export default function FaceScanner() {
     const videoRef = useRef<HTMLVideoElement>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -85,6 +105,8 @@ export default function FaceScanner() {
     const staticFramesRef = useRef<{ [key: string]: number }>({});
     const lastAlertTimeRef = useRef<{ [key: string]: number }>({});
     const lastRecognizedRef = useRef<{ [key: number]: number }>({});
+    const trackersRef = useRef<{ [trackId: number]: TrackData }>({});
+    const nextTrackIdRef = useRef<number>(1);
     
     useEffect(() => {
         logsRef.current = logs;
@@ -299,11 +321,50 @@ export default function FaceScanner() {
                 const ctx = canvas.getContext('2d');
                 ctx?.clearRect(0, 0, canvas.width, canvas.height);
 
+                  const currentTrackers = trackersRef.current;
+                  const now = Date.now();
+                  
+                  // 1. Clean up old trackers (> 1 sec unseen)
+                  Object.keys(currentTrackers).forEach(id => {
+                      if (now - currentTrackers[Number(id)].lastSeen > 1000) {
+                          delete currentTrackers[Number(id)];
+                      }
+                  });
+
                   // We will draw standard faceapi boxes instead of custom drawing
                   resizedDetections.forEach(detection => {
                       const box = detection.detection.box;
-                      let drawColor = '#D40000'; // Red for Unrecognized/Unknown
-                      let labelText = 'Unknown';
+
+                      // 2. Match detections to trackers by IoU
+                      let bestTrackerId: number | null = null;
+                      let maxIou = 0;
+                      Object.keys(currentTrackers).forEach(id => {
+                          const tId = Number(id);
+                          const iou = computeIoU(box, currentTrackers[tId].box);
+                          if (iou > maxIou) {
+                              maxIou = iou;
+                              bestTrackerId = tId;
+                          }
+                      });
+
+                      // If IoU > 0.3, assign to tracker, else create new tracker
+                      if (maxIou < 0.3 || bestTrackerId === null) {
+                          bestTrackerId = nextTrackIdRef.current++;
+                          currentTrackers[bestTrackerId] = {
+                              history: [],
+                              lockedIdentity: null,
+                              lastSeen: now,
+                              box: box
+                          };
+                      }
+
+                      const tracker = currentTrackers[bestTrackerId];
+                      tracker.box = box;
+                      tracker.lastSeen = now;
+
+                      // Default drawing params
+                      let drawColor = '#3B82F6'; // Blue for processing
+                      let labelText = 'Processing...';
                       let isLive = false;
                       let user: any = null;
                       let distance = 0;
@@ -311,34 +372,52 @@ export default function FaceScanner() {
                       if (box.width < 120 || box.height < 120) {
                           drawColor = '#06B6D4'; // Cyan (so it doesn't conflict with Yellow 'Already Present')
                           labelText = 'Terlalu Jauh (Maju Sedikit)';
-                      } else if (faceMatcher) {
-                          const bestMatch = faceMatcher.findBestMatch(detection.descriptor);
+                      } else {
+                          // If not locked, evaluate current frame
+                          if (!tracker.lockedIdentity && faceMatcher) {
+                              const bestMatch = faceMatcher.findBestMatch(detection.descriptor);
+                              let currentLabel = 'unknown';
+                              if (bestMatch.label !== 'unknown' && bestMatch.distance < 0.40) {
+                                  currentLabel = bestMatch.label;
+                              }
+                              
+                              tracker.history.push(currentLabel);
+                              if (tracker.history.length > 5) {
+                                  tracker.history.shift();
+                              }
+                              
+                              // Check consensus if we have 5 frames
+                              if (tracker.history.length === 5) {
+                                  const counts: {[key: string]: number} = {};
+                                  let maxCount = 0;
+                                  let majorityLabel = 'unknown';
+                                  tracker.history.forEach(label => {
+                                      counts[label] = (counts[label] || 0) + 1;
+                                      if (counts[label] > maxCount) {
+                                          maxCount = counts[label];
+                                          majorityLabel = label;
+                                      }
+                                  });
+                                  
+                                  // Lock if majority is >= 3
+                                  if (maxCount >= 3) {
+                                      tracker.lockedIdentity = majorityLabel;
+                                  }
+                              }
+                          }
                           
-                          if (bestMatch.label === 'unknown') {
+                          if (tracker.lockedIdentity === 'unknown') {
+                              drawColor = '#D40000'; // Red
+                              labelText = 'Unknown';
                               staticFramesRef.current['unknown'] = (staticFramesRef.current['unknown'] || 0) + 1;
                               if (staticFramesRef.current['unknown'] > 30) {
                                   sendSecurityAlert('unknown_face', 'Unknown face detected lingering in frame for an extended period.');
                                   staticFramesRef.current['unknown'] = 0;
                               }
-                          } else if (bestMatch.distance < 0.40) {
+                          } else if (tracker.lockedIdentity) {
                               staticFramesRef.current['unknown'] = 0; // reset unknown counter
-                              user = JSON.parse(bestMatch.label);
-                              distance = bestMatch.distance;
+                              user = JSON.parse(tracker.lockedIdentity);
                               const firstName = user.name.split(' ')[0];
-
-                            // Liveness 1: Blink detection (Standard threshold)
-                            const ear = estimateEAR(detection.landmarks);
-                            
-                            if (ear < 0.24) {
-                                closedFramesRef.current[user.id] = (closedFramesRef.current[user.id] || 0) + 1;
-                            } else {
-                                if ((closedFramesRef.current[user.id] || 0) >= BLINK_CLOSED_FRAMES) {
-                                    lastBlinkRef.current[user.id] = Date.now();
-                                }
-                                closedFramesRef.current[user.id] = 0;
-                            }
-                            
-                            const hasBlinked = Date.now() - (lastBlinkRef.current[user.id] || 0) < LIVENESS_WINDOW_MS;
 
                             // Liveness 2: Natural Movement (3D Yaw variance)
                             const yaw = estimateYaw(detection.landmarks);
@@ -373,8 +452,8 @@ export default function FaceScanner() {
                                 labelText = `${firstName} (Recorded)`;
                             } else {
                                 // Passed liveness
-                                const now = new Date();
-                                const isLate = now.getHours() > 6 || (now.getHours() === 6 && now.getMinutes() >= 20);
+                                const nowTime = new Date();
+                                const isLate = nowTime.getHours() > 6 || (nowTime.getHours() === 6 && nowTime.getMinutes() >= 20);
                                 
                                 if (isLate) {
                                     drawColor = '#ef4444'; // Red for Late
