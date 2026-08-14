@@ -84,6 +84,7 @@ export default function FaceScanner() {
     const yawHistoryRef = useRef<{ [key: number]: number[] }>({});
     const staticFramesRef = useRef<{ [key: string]: number }>({});
     const lastAlertTimeRef = useRef<{ [key: string]: number }>({});
+    const lastRecognizedRef = useRef<{ [key: number]: number }>({});
     
     useEffect(() => {
         logsRef.current = logs;
@@ -169,8 +170,8 @@ export default function FaceScanner() {
                         return new faceapi.LabeledFaceDescriptors(JSON.stringify(data.user), descriptorsArray);
                     });
                     
-                    // Increase threshold to 0.55 for better matching rate
-                    const matcher = new faceapi.FaceMatcher(labeledDescriptors, 0.55);
+                    // Decrease threshold to 0.42 for much stricter matching and less false positives
+                    const matcher = new faceapi.FaceMatcher(labeledDescriptors, 0.42);
                     setFaceMatcher(matcher);
                     setStatusText(`Synced ${embeddingsData.length} enrolled faces.`);
                 }
@@ -316,7 +317,7 @@ export default function FaceScanner() {
                                   sendSecurityAlert('unknown_face', 'Unknown face detected lingering in frame for an extended period.');
                                   staticFramesRef.current['unknown'] = 0;
                               }
-                          } else if (bestMatch.distance < 0.55) {
+                          } else if (bestMatch.distance < 0.42) {
                               staticFramesRef.current['unknown'] = 0; // reset unknown counter
                               user = JSON.parse(bestMatch.label);
                               distance = bestMatch.distance;
