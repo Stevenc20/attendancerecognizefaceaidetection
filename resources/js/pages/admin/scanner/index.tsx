@@ -170,8 +170,8 @@ export default function FaceScanner() {
                         return new faceapi.LabeledFaceDescriptors(JSON.stringify(data.user), descriptorsArray);
                     });
                     
-                    // Decrease threshold to 0.42 for much stricter matching and less false positives
-                    const matcher = new faceapi.FaceMatcher(labeledDescriptors, 0.42);
+                    // Decrease threshold to 0.38 for maximum strictness (often needed for students with identical uniforms/hijabs)
+                    const matcher = new faceapi.FaceMatcher(labeledDescriptors, 0.38);
                     setFaceMatcher(matcher);
                     setStatusText(`Synced ${embeddingsData.length} enrolled faces.`);
                 }
@@ -287,7 +287,7 @@ export default function FaceScanner() {
 
             try {
                 // Use SsdMobilenetv1 for maximum accuracy and stable bounding boxes
-                const detections = await faceapi.detectAllFaces(video, new faceapi.SsdMobilenetv1Options({ minConfidence: 0.5 }))
+                const detections = await faceapi.detectAllFaces(video, new faceapi.SsdMobilenetv1Options({ minConfidence: 0.6 }))
                     .withFaceLandmarks()
                     .withFaceDescriptors();
 
@@ -317,7 +317,7 @@ export default function FaceScanner() {
                                   sendSecurityAlert('unknown_face', 'Unknown face detected lingering in frame for an extended period.');
                                   staticFramesRef.current['unknown'] = 0;
                               }
-                          } else if (bestMatch.distance < 0.42) {
+                          } else if (bestMatch.distance < 0.38) {
                               staticFramesRef.current['unknown'] = 0; // reset unknown counter
                               user = JSON.parse(bestMatch.label);
                               distance = bestMatch.distance;
