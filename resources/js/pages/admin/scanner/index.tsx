@@ -2,23 +2,12 @@ import { Head, Link, router } from '@inertiajs/react';
 import * as faceapi from '@vladmandic/face-api';
 import { Camera, CheckCircle, Loader2, Maximize, AlertCircle, XCircle, Sun, Moon } from 'lucide-react';
 import React, { useEffect, useRef, useState } from 'react';
-import { estimateEAR, isEyeClosed } from '@/lib/liveness';
+import { estimateEAR, isEyeClosed, estimateYaw, assessFaceQuality } from '@/lib/liveness';
 import { attendance, embeddings } from '@/routes/admin/scanner';
 
 const LIVENESS_WINDOW_MS = 10000;
 const BLINK_CLOSED_FRAMES = 1;
 const MIN_YAW_RANGE = 0.5; // Extremely small threshold to instantly detect living micro-tremors vs static photo
-
-const estimateYaw = (landmarks: faceapi.FaceLandmarks68): number => {
-    const positions = landmarks.positions;
-    const leftEye = positions[36];
-    const rightEye = positions[45];
-    const noseTip = positions[30];
-    const eyeDist = Math.hypot(rightEye.x - leftEye.x, rightEye.y - leftEye.y);
-    const midEyesX = (leftEye.x + rightEye.x) / 2;
-    const offset = noseTip.x - midEyesX;
-    return (Math.asin(Math.max(-1, Math.min(1, offset / eyeDist))) * 180) / Math.PI;
-};
 
 // Note: import.meta.env.BASE_URL compiles to '/build/' in production (the asset base),
 // so static app paths like /models must stay root-relative - do NOT prefix them with BASE_URL.
@@ -368,13 +357,13 @@ export default function FaceScanner() {
                       let isLive = false;
                       let user: any = null;
                       let distance = 0;
+                      // 1. TRUE FACE QUALITY GATE
+                      const quality = assessFaceQuality(detection, false); // For scanner, strict pose helps accuracy
   
-                      if (box.width < 120 || box.height < 120) {
-                          drawColor = '#06B6D4'; // Cyan (so it doesn't conflict with Yellow 'Already Present')
-                          labelText = 'Terlalu Jauh (Maju Sedikit)';
-                      } else if (detection.detection.score < 0.85) {
-                          drawColor = '#F59E0B'; // Amber
-                          labelText = 'Wajah Kurang Jelas';
+                      if (!quality.isGood) {
+                          // Cyan for distance, Amber for blurry/pose
+                          drawColor = detection.detection.box.width < 120 ? '#06B6D4' : '#F59E0B';
+                          labelText = quality.reasons[0] || 'Wajah Kurang Jelas';
                       } else {
                           // If not locked, or locked as unknown, evaluate current frame
                           if ((!tracker.lockedIdentity || tracker.lockedIdentity === 'unknown') && faceMatcher) {
@@ -405,23 +394,34 @@ export default function FaceScanner() {
                                   const margin = top2.distance - top1.distance;
                                   
                                   // Log detailed debug info to console for the user to audit
-                                  console.log(`[SCANNER DEBUG] Detection Score: ${(detection.detection.score * 100).toFixed(1)}% | TOP 1: ${top1.label} (${top1.distance.toFixed(3)}) | TOP 2: ${top2.label} (${top2.distance.toFixed(3)}) | MARGIN: ${margin.toFixed(3)}`);
+                                  console.log(`[SCANNER DEBUG] Track #${bestTrackerId} | Detection: ${(detection.detection.score * 100).toFixed(1)}% | TOP 1: ${top1.label} (${top1.distance.toFixed(3)}) | TOP 2: ${top2.label} (${top2.distance.toFixed(3)}) | MARGIN: ${margin.toFixed(3)}`);
                                   
                                   // Require at least 0.04 margin difference to prevent mistaken identity between twins/similar faces
                                   if (margin >= 0.04) {
                                       currentLabel = top1.label;
                                   } else {
                                       marginTooClose = true;
-                                      console.warn(`[SCANNER WARNING] Margin too close! Rejecting ${top1.label}`);
+                                      console.warn(`[SCANNER WARNING] Track #${bestTrackerId} Margin too close! Rejecting ${top1.label}`);
                                   }
                               }
                               
-                              tracker.history.push(currentLabel);
+                              // Clean Consensus: Only push valid labels. Track unknowns separately.
+                              if (currentLabel !== 'unknown') {
+                                  tracker.history.push(currentLabel);
+                              } else {
+                                  tracker.unknownCount = (tracker.unknownCount || 0) + 1;
+                              }
+                              
                               if (tracker.history.length > 4) {
                                   tracker.history.shift();
                               }
                               
-                              // Check consensus if we have 4 frames
+                              // Lock as UNKNOWN if we see it consistently and no valid identity is building up
+                              if (tracker.unknownCount >= 6 && tracker.history.length < 2) {
+                                  tracker.lockedIdentity = 'unknown';
+                              }
+                              
+                              // Check consensus if we have 4 VALID frames
                               if (tracker.history.length === 4) {
                                   const counts: {[key: string]: number} = {};
                                   let maxCount = 0;
@@ -434,16 +434,32 @@ export default function FaceScanner() {
                                       }
                                   });
                                   
-                                  // Lock if majority is >= 3 (out of 4)
+                                  // Lock if majority is >= 3 (out of 4 valid frames)
                                   if (maxCount >= 3) {
                                       tracker.lockedIdentity = majorityLabel;
+                                      console.log(`[SCANNER] Track #${bestTrackerId} LOCKED to ${majorityLabel}`);
+                                  } else {
+                                      // Conflicting valid labels (e.g. 2 Aisyah, 2 Steven) -> reset to prevent false lock
+                                      tracker.history = [];
                                   }
                               }
 
                               // Visual feedback for margin issue while processing
                               if (marginTooClose && (!tracker.lockedIdentity || tracker.lockedIdentity === 'unknown')) {
                                   drawColor = '#F97316'; // Orange
-                                  labelText = 'Margin Too Close (Mirip Dua Orang)';
+                                  labelText = 'Mirip Dua Orang (Maju Sedikit)';
+                              }
+                          } else if (tracker.lockedIdentity && tracker.lockedIdentity !== 'unknown') {
+                              // IDENTITY VERIFICATION PASCA-LOCK (Prevent Track Hijacking)
+                              if (faceMatcher) {
+                                  const bestMatch = faceMatcher.findBestMatch(detection.descriptor);
+                                  // Jika wajah tiba-tiba sangat mirip orang lain (bukan identity yang dilock)
+                                  if (bestMatch.label !== tracker.lockedIdentity && bestMatch.distance < 0.38) {
+                                      console.warn(`[SCANNER ALERT] Track #${bestTrackerId} Identity Hijack Detected! Was ${tracker.lockedIdentity}, now looks like ${bestMatch.label}. Re-evaluating...`);
+                                      tracker.lockedIdentity = null;
+                                      tracker.history = [];
+                                      tracker.unknownCount = 0;
+                                  }
                               }
                           }
                           

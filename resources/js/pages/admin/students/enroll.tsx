@@ -3,7 +3,7 @@ import { Head, useForm, usePage } from '@inertiajs/react';
 import DashboardLayout from '@/layouts/dashboard-layout';
 import * as faceapi from '@vladmandic/face-api';
 import { Camera, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
-import { estimateEAR, isEyeClosed } from '@/lib/liveness';
+import { estimateEAR, isEyeClosed, assessFaceQuality } from '@/lib/liveness';
 
 const estimateYaw = (landmarks: faceapi.FaceLandmarks68): number => {
     const positions = landmarks.positions;
@@ -33,6 +33,7 @@ export default function AdminFaceEnrollment({ hasEnrolled, student }: FaceEnroll
     
     const [isLoading, setIsLoading] = useState(true);
     const [status, setStatus] = useState<string>('Memuat model AI...');
+    const [qualityFeedback, setQualityFeedback] = useState<string | null>(null);
     const [isDetecting, setIsDetecting] = useState(false);
     const [stream, setStream] = useState<MediaStream | null>(null);
     const [error, setError] = useState<string | null>(null);
@@ -214,6 +215,16 @@ export default function AdminFaceEnrollment({ hasEnrolled, student }: FaceEnroll
                     const currentStage = descriptorsRef.current.length;
                     const yaw = estimateYaw(detection.landmarks);
 
+                    // True Face Quality Gate
+                    const allowPose = currentStage >= 2;
+                    const quality = assessFaceQuality(detection, allowPose);
+                    
+                    if (!quality.isGood) {
+                        setQualityFeedback(quality.reasons[0]);
+                    } else {
+                        setQualityFeedback(null);
+                    }
+
                     const ear = estimateEAR(detection.landmarks);
 
                     if (isEyeClosed(ear)) {
@@ -229,12 +240,15 @@ export default function AdminFaceEnrollment({ hasEnrolled, student }: FaceEnroll
 
                     let poseOk = false;
 
-                    if (currentStage === 0) {
-                        poseOk = detection.detection.score > 0.55 && Math.abs(yaw) < 10;
-                    } else if (currentStage >= 2) {
-                        poseOk = detection.detection.score > 0.35 && Math.abs(yaw) >= 10;
-                    } else {
-                        poseOk = detection.detection.score > 0.55;
+                    // Require True Quality Gate to pass before checking pose specifics
+                    if (quality.isGood) {
+                        if (currentStage === 0) {
+                            poseOk = Math.abs(yaw) < 10;
+                        } else if (currentStage >= 2) {
+                            poseOk = Math.abs(yaw) >= 10;
+                        } else {
+                            poseOk = true;
+                        }
                     }
 
                     if (currentStage === 0 && poseOk) {
@@ -245,8 +259,8 @@ export default function AdminFaceEnrollment({ hasEnrolled, student }: FaceEnroll
                         stableFramesRef.current = 0;
                     }
 
-                    if (currentStage > 0 && detection.detection.score > 0.35 && detection.detection.score > bestScoreRef.current) {
-                        bestScoreRef.current = detection.detection.score;
+                    if (currentStage > 0 && poseOk && quality.score > bestScoreRef.current) {
+                        bestScoreRef.current = quality.score;
                         bestDescriptorRef.current = detection.descriptor;
                     }
 
@@ -412,6 +426,12 @@ export default function AdminFaceEnrollment({ hasEnrolled, student }: FaceEnroll
                                     {/* Text UI Overlay */}
                                     {!isLoading && !processing && isDetecting && (
                                         <div className="absolute inset-0 z-10 pointer-events-none flex flex-col items-center justify-end pb-12">
+                                            {qualityFeedback && !capturingRef.current && (
+                                                <div className="mb-4 bg-orange-500/90 text-white px-5 py-2 rounded-full font-bold shadow-lg flex items-center">
+                                                    <AlertCircle size={18} className="mr-2" />
+                                                    Kualitas Kurang: {qualityFeedback}
+                                                </div>
+                                            )}
                                             <h2 className={`text-white text-xl md:text-2xl font-bold px-6 py-3 rounded-full mb-4 transition-all shadow-lg ${
                                                 capturingRef.current ? 'bg-green-500' : 'bg-[#D40000]/90'
                                             }`}>
