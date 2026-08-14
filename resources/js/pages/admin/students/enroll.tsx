@@ -36,6 +36,8 @@ export default function AdminFaceEnrollment({ hasEnrolled, student }: FaceEnroll
     const [isDetecting, setIsDetecting] = useState(false);
     const [stream, setStream] = useState<MediaStream | null>(null);
     const [error, setError] = useState<string | null>(null);
+    const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
+    const [selectedDeviceId, setSelectedDeviceId] = useState<string>('');
     
     const STAGES = [
         { label: "Pegang HP/Kamera Anda dengan tegak", instruction: "Berkedip untuk verifikasi, lalu jangan gerak-gerak dulu..." },
@@ -82,6 +84,15 @@ export default function AdminFaceEnrollment({ hasEnrolled, student }: FaceEnroll
     });
 
     useEffect(() => {
+        navigator.mediaDevices.enumerateDevices()
+            .then(devices => {
+                const videoDevices = devices.filter(d => d.kind === 'videoinput');
+                setDevices(videoDevices);
+            })
+            .catch(err => console.error("Error enumerating devices", err));
+    }, []);
+
+    useEffect(() => {
         const loadModels = async () => {
             try {
                 await Promise.all([
@@ -116,11 +127,19 @@ export default function AdminFaceEnrollment({ hasEnrolled, student }: FaceEnroll
         };
     }, []);
 
-    const startCamera = async () => {
+    const startCamera = async (deviceId?: string) => {
         try {
-            const mediaStream = await navigator.mediaDevices.getUserMedia({ 
-                video: { width: 720, height: 720 } 
-            });
+            if (videoRef.current && videoRef.current.srcObject) {
+                const existingStream = videoRef.current.srcObject as MediaStream;
+                existingStream.getTracks().forEach(track => track.stop());
+            }
+
+            const constraints: MediaStreamConstraints = { 
+                video: deviceId 
+                    ? { deviceId: { exact: deviceId }, width: 720, height: 720 } 
+                    : { width: 720, height: 720, facingMode: 'user' } 
+            };
+            const mediaStream = await navigator.mediaDevices.getUserMedia(constraints);
             setStream(mediaStream);
 
             if (videoRef.current) {
@@ -130,6 +149,12 @@ export default function AdminFaceEnrollment({ hasEnrolled, student }: FaceEnroll
             console.error("Error accessing camera", err);
             setError("Tidak dapat mengakses kamera. Harap izinkan akses kamera di browser Anda.");
         }
+    };
+
+    const handleDeviceChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+        const deviceId = e.target.value;
+        setSelectedDeviceId(deviceId);
+        startCamera(deviceId);
     };
 
     // Attach stream when video element becomes available (e.g. after clicking retake)
@@ -345,21 +370,40 @@ export default function AdminFaceEnrollment({ hasEnrolled, student }: FaceEnroll
                                     </button>
                                 </div>
                             ) : (
-                                <div className="relative bg-[#080B1A] rounded-xl overflow-hidden min-h-[500px] md:min-h-[600px] flex items-center justify-center mb-6">
-                                    {isLoading && (
-                                        <div className="absolute inset-0 flex flex-col items-center justify-center text-white z-20 bg-[#080B1A]/80">
-                                            <Loader2 className="animate-spin mb-4 text-[#D40000]" size={32} />
-                                            <p className="font-medium">{status}</p>
+                                <div>
+                                    {devices.length > 0 && (
+                                        <div className="mb-4">
+                                            <label className="block text-[11px] font-bold text-[#6B6F76] uppercase tracking-wider mb-1.5">Pilih Kamera</label>
+                                            <select 
+                                                className="w-full h-[40px] px-4 rounded-xl border border-gray-200 text-[14px] bg-white text-[#111318] focus:border-[#D40000] outline-none"
+                                                value={selectedDeviceId}
+                                                onChange={handleDeviceChange}
+                                            >
+                                                {devices.map(device => (
+                                                    <option key={device.deviceId} value={device.deviceId}>
+                                                        {device.label || `Kamera ${devices.indexOf(device) + 1}`}
+                                                    </option>
+                                                ))}
+                                            </select>
                                         </div>
                                     )}
-                                    
-                                    <video 
-                                        ref={videoRef}
-                                        onPlay={handleVideoPlay}
-                                        autoPlay 
-                                        muted
-                                        className="absolute top-0 left-0 w-full h-full object-contain transform scale-x-[-1]"
-                                    />
+
+                                    <div className="relative bg-[#080B1A] rounded-xl overflow-hidden min-h-[500px] md:min-h-[600px] flex items-center justify-center mb-6">
+                                        {isLoading && (
+                                            <div className="absolute inset-0 flex flex-col items-center justify-center text-white z-20 bg-[#080B1A]/80">
+                                                <Loader2 className="animate-spin mb-4 text-[#D40000]" size={32} />
+                                                <p className="font-medium">{status}</p>
+                                            </div>
+                                        )}
+                                        
+                                        <video 
+                                            ref={videoRef}
+                                            onPlay={handleVideoPlay}
+                                            autoPlay 
+                                            muted
+                                            playsInline
+                                            className="absolute top-0 left-0 w-full h-full object-contain transform scale-x-[-1]"
+                                        />
                                     <canvas 
                                         ref={canvasRef}
                                         className="absolute top-0 left-0 w-full h-full object-contain transform scale-x-[-1] pointer-events-none"
