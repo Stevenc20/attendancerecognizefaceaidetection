@@ -430,6 +430,7 @@ export default function AdminFaceEnrollment({ hasEnrolled, student }: FaceEnroll
                                         </div>
                                     )}
                                 </div>
+                                </div>
                             )}
 
                             <div className="bg-gray-50 rounded-xl p-4 border border-gray-100 text-center">
