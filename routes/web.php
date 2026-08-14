@@ -133,6 +133,8 @@ Route::middleware(['auth', 'verified', \App\Http\Middleware\CheckActivation::cla
         Route::post('/admin/students', [\App\Http\Controllers\Admin\StudentController::class, 'store'])->name('admin.students.store');
         Route::put('/admin/students/{student}', [\App\Http\Controllers\Admin\StudentController::class, 'update'])->name('admin.students.update');
         Route::delete('/admin/students/{student}', [\App\Http\Controllers\Admin\StudentController::class, 'destroy'])->name('admin.students.destroy');
+        Route::get('/admin/students/{student}/enroll', [\App\Http\Controllers\Admin\StudentEnrollmentController::class, 'index'])->name('admin.students.enroll');
+        Route::post('/admin/students/{student}/enroll', [\App\Http\Controllers\Admin\StudentEnrollmentController::class, 'store'])->name('admin.students.enroll.store');
         
         // Data Import
         Route::get('/admin/import', [\App\Http\Controllers\Admin\DataImportController::class, 'index'])->name('admin.import');

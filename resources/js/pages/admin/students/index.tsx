@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { Head, useForm, usePage } from '@inertiajs/react';
+import { Head, useForm, usePage, Link } from '@inertiajs/react';
 import DashboardLayout from '@/layouts/dashboard-layout';
-import { Plus, X, Trash2, Edit2, GraduationCap, CheckCircle2 } from 'lucide-react';
+import { Plus, X, Trash2, Edit2, GraduationCap, CheckCircle2, Camera } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 interface Classroom {
@@ -238,6 +238,13 @@ export default function StudentsManagement({ students, classrooms, filters }: St
                                             )}
                                         </td>
                                         <td className="py-3.5 px-5 text-right flex items-center justify-end gap-2">
+                                            <Link
+                                                href={`/admin/students/${student.id}/enroll`}
+                                                className="p-1.5 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-md transition-colors"
+                                                title="Enroll Face"
+                                            >
+                                                <Camera size={16} />
+                                            </Link>
                                             <button 
                                                 onClick={() => openEdit(student)}
                                                 className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-colors"
