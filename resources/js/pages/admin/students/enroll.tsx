@@ -230,11 +230,11 @@ export default function AdminFaceEnrollment({ hasEnrolled, student }: FaceEnroll
                     let poseOk = false;
 
                     if (currentStage === 0) {
-                        poseOk = detection.detection.score > 0.6 && Math.abs(yaw) < 10 && blinkCountRef.current >= 1;
+                        poseOk = detection.detection.score > 0.55 && Math.abs(yaw) < 10 && blinkCountRef.current >= 1;
                     } else if (currentStage >= 2) {
-                        poseOk = detection.detection.score > 0.4 && Math.abs(yaw) >= 12;
+                        poseOk = detection.detection.score > 0.35 && Math.abs(yaw) >= 10;
                     } else {
-                        poseOk = detection.detection.score > 0.6;
+                        poseOk = detection.detection.score > 0.55;
                     }
 
                     if (currentStage === 0 && poseOk) {
@@ -250,7 +250,7 @@ export default function AdminFaceEnrollment({ hasEnrolled, student }: FaceEnroll
                         bestDescriptorRef.current = detection.descriptor;
                     }
 
-                    const stageReady = poseOk && (currentStage > 0 || stableFramesRef.current >= 3);
+                    const stageReady = poseOk && (currentStage > 0 || stableFramesRef.current >= 2);
                     const timedOut = fallbackReadyRef.current && currentStage > 0 && bestDescriptorRef.current !== null;
 
                     if ((stageReady || timedOut) && !capturingRef.current) {

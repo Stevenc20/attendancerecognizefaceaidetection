@@ -17,4 +17,4 @@ export const estimateEAR = (landmarks: faceapi.FaceLandmarks68): number => {
     return (singleEyeEAR(LEFT_EYE_INDICES) + singleEyeEAR(RIGHT_EYE_INDICES)) / 2;
 };
 
-export const isEyeClosed = (ear: number, threshold = 0.25): boolean => ear < threshold;
+export const isEyeClosed = (ear: number, threshold = 0.20): boolean => ear < threshold;
