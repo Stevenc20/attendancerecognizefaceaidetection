@@ -170,8 +170,8 @@ export default function FaceScanner() {
                         return new faceapi.LabeledFaceDescriptors(JSON.stringify(data.user), descriptorsArray);
                     });
                     
-                    // Set threshold to 0.40 as the exact sweet spot (0.38 too strict, 0.42 too loose)
-                    const matcher = new faceapi.FaceMatcher(labeledDescriptors, 0.40);
+                    // Set threshold to 0.45 (0.40 was too strict after removing blink check, causing 'Unknown' on fast enrollments)
+                    const matcher = new faceapi.FaceMatcher(labeledDescriptors, 0.45);
                     setFaceMatcher(matcher);
                     setStatusText(`Synced ${embeddingsData.length} enrolled faces.`);
                 }
@@ -317,7 +317,7 @@ export default function FaceScanner() {
                                   sendSecurityAlert('unknown_face', 'Unknown face detected lingering in frame for an extended period.');
                                   staticFramesRef.current['unknown'] = 0;
                               }
-                          } else if (bestMatch.distance < 0.40) {
+                          } else if (bestMatch.distance < 0.45) {
                               staticFramesRef.current['unknown'] = 0; // reset unknown counter
                               user = JSON.parse(bestMatch.label);
                               distance = bestMatch.distance;
