@@ -347,8 +347,8 @@ export default function FaceScanner() {
                           }
                       });
 
-                      // If IoU > 0.3, assign to tracker, else create new tracker
-                      if (maxIou < 0.3 || bestTrackerId === null) {
+                      // If IoU > 0.15, assign to tracker, else create new tracker
+                      if (maxIou < 0.15 || bestTrackerId === null) {
                           bestTrackerId = nextTrackIdRef.current++;
                           currentTrackers[bestTrackerId] = {
                               history: [],
@@ -372,6 +372,9 @@ export default function FaceScanner() {
                       if (box.width < 120 || box.height < 120) {
                           drawColor = '#06B6D4'; // Cyan (so it doesn't conflict with Yellow 'Already Present')
                           labelText = 'Terlalu Jauh (Maju Sedikit)';
+                      } else if (detection.detection.score < 0.85) {
+                          drawColor = '#F59E0B'; // Amber
+                          labelText = 'Wajah Kurang Jelas';
                       } else {
                           // If not locked, or locked as unknown, evaluate current frame
                           if ((!tracker.lockedIdentity || tracker.lockedIdentity === 'unknown') && faceMatcher) {
@@ -379,37 +382,29 @@ export default function FaceScanner() {
                               let currentLabel = 'unknown';
                               if (bestMatch.label !== 'unknown' && bestMatch.distance < 0.40) {
                                   currentLabel = bestMatch.label;
-                                  
-                                  // If we were previously stuck on 'unknown', instantly recover and lock to the real identity
-                                  if (tracker.lockedIdentity === 'unknown') {
-                                      tracker.lockedIdentity = currentLabel;
-                                      tracker.history = Array(5).fill(currentLabel);
-                                  }
                               }
                               
-                              if (!tracker.lockedIdentity) {
-                                  tracker.history.push(currentLabel);
-                                  if (tracker.history.length > 5) {
-                                      tracker.history.shift();
-                                  }
-                                  
-                                  // Check consensus if we have 5 frames
-                                  if (tracker.history.length === 5) {
-                                      const counts: {[key: string]: number} = {};
-                                      let maxCount = 0;
-                                      let majorityLabel = 'unknown';
-                                      tracker.history.forEach(label => {
-                                          counts[label] = (counts[label] || 0) + 1;
-                                          if (counts[label] > maxCount) {
-                                              maxCount = counts[label];
-                                              majorityLabel = label;
-                                          }
-                                      });
-                                      
-                                      // Lock if majority is >= 3
-                                      if (maxCount >= 3) {
-                                          tracker.lockedIdentity = majorityLabel;
+                              tracker.history.push(currentLabel);
+                              if (tracker.history.length > 4) {
+                                  tracker.history.shift();
+                              }
+                              
+                              // Check consensus if we have 4 frames
+                              if (tracker.history.length === 4) {
+                                  const counts: {[key: string]: number} = {};
+                                  let maxCount = 0;
+                                  let majorityLabel = 'unknown';
+                                  tracker.history.forEach(label => {
+                                      counts[label] = (counts[label] || 0) + 1;
+                                      if (counts[label] > maxCount) {
+                                          maxCount = counts[label];
+                                          majorityLabel = label;
                                       }
+                                  });
+                                  
+                                  // Lock if majority is >= 3 (out of 4)
+                                  if (maxCount >= 3) {
+                                      tracker.lockedIdentity = majorityLabel;
                                   }
                               }
                           }
