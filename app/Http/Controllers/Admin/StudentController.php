@@ -54,8 +54,8 @@ class StudentController extends Controller
         ]);
 
         User::create([
-            'nis' => $request->nis,
-            'nisn' => $request->nisn,
+            'nis' => $request->nis ?: null,
+            'nisn' => $request->nisn ?: null,
             'name' => $request->name,
             'email' => $request->email,
             'password' => Hash::make($request->password),
@@ -88,8 +88,8 @@ class StudentController extends Controller
 
         $request->validate($rules);
 
-        $student->nis = $request->nis;
-        $student->nisn = $request->nisn;
+        $student->nis = $request->nis ?: null;
+        $student->nisn = $request->nisn ?: null;
         $student->name = $request->name;
         $student->email = $request->email;
         $student->classroom_id = $request->classroom_id;

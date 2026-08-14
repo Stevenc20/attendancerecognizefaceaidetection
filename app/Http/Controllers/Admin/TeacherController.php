@@ -32,7 +32,7 @@ class TeacherController extends Controller
         ]);
 
         User::create([
-            'nip' => $request->nip,
+            'nip' => $request->nip ?: null,
             'name' => $request->name,
             'email' => $request->email,
             'password' => Hash::make($request->password),
@@ -62,7 +62,7 @@ class TeacherController extends Controller
 
         $request->validate($rules);
 
-        $teacher->nip = $request->nip;
+        $teacher->nip = $request->nip ?: null;
         $teacher->name = $request->name;
         $teacher->email = $request->email;
         $teacher->account_status = $request->account_status;
