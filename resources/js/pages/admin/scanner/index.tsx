@@ -7,7 +7,7 @@ import { attendance, embeddings } from '@/routes/admin/scanner';
 
 const LIVENESS_WINDOW_MS = 10000;
 const BLINK_CLOSED_FRAMES = 1;
-const MIN_YAW_RANGE = 0.8; // Extremely small threshold to instantly detect living micro-tremors vs static photo
+const MIN_YAW_RANGE = 0.5; // Extremely small threshold to instantly detect living micro-tremors vs static photo
 
 const estimateYaw = (landmarks: faceapi.FaceLandmarks68): number => {
     const positions = landmarks.positions;
@@ -326,7 +326,7 @@ export default function FaceScanner() {
                             // Liveness 1: Blink detection (Standard threshold)
                             const ear = estimateEAR(detection.landmarks);
                             
-                            if (ear < 0.26) {
+                            if (ear < 0.20) {
                                 closedFramesRef.current[user.id] = (closedFramesRef.current[user.id] || 0) + 1;
                             } else {
                                 if ((closedFramesRef.current[user.id] || 0) >= BLINK_CLOSED_FRAMES) {
