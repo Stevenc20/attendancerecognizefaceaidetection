@@ -170,8 +170,8 @@ export default function FaceScanner() {
                         return new faceapi.LabeledFaceDescriptors(JSON.stringify(data.user), descriptorsArray);
                     });
                     
-                    // Set threshold back to 0.42 for balanced strictness (handles glasses/variations while rejecting false positives)
-                    const matcher = new faceapi.FaceMatcher(labeledDescriptors, 0.42);
+                    // Set threshold back to 0.40 for strict matching (preventing fatal false positives!)
+                    const matcher = new faceapi.FaceMatcher(labeledDescriptors, 0.40);
                     setFaceMatcher(matcher);
                     setStatusText(`Synced ${embeddingsData.length} enrolled faces.`);
                 }
@@ -320,7 +320,7 @@ export default function FaceScanner() {
                                   sendSecurityAlert('unknown_face', 'Unknown face detected lingering in frame for an extended period.');
                                   staticFramesRef.current['unknown'] = 0;
                               }
-                          } else if (bestMatch.distance < 0.42) {
+                          } else if (bestMatch.distance < 0.40) {
                               staticFramesRef.current['unknown'] = 0; // reset unknown counter
                               user = JSON.parse(bestMatch.label);
                               distance = bestMatch.distance;
