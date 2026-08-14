@@ -64,8 +64,8 @@ export const assessFaceQuality = (
     let score = confidence;
     const reasons: string[] = [];
     
-    // 1. Minimum Size Check (at least 120px for reliable extraction)
-    if (box.width < 120 || box.height < 120) {
+    // 1. Minimum Size Check (at least 90px for reliable extraction)
+    if (box.width < 90 || box.height < 90) {
         score *= 0.5;
         reasons.push("Terlalu Jauh");
     }

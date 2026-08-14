@@ -362,7 +362,7 @@ export default function FaceScanner() {
   
                       if (!quality.isGood) {
                           // Cyan for distance, Amber for blurry/pose
-                          drawColor = detection.detection.box.width < 120 ? '#06B6D4' : '#F59E0B';
+                          drawColor = detection.detection.box.width < 90 ? '#06B6D4' : '#F59E0B';
                           labelText = quality.reasons[0] || 'Wajah Kurang Jelas';
                       } else {
                           // If not locked, or locked as unknown, evaluate current frame
@@ -396,12 +396,14 @@ export default function FaceScanner() {
                                   // Log detailed debug info to console for the user to audit
                                   console.log(`[SCANNER DEBUG] Track #${bestTrackerId} | Detection: ${(detection.detection.score * 100).toFixed(1)}% | TOP 1: ${top1.label} (${top1.distance.toFixed(3)}) | TOP 2: ${top2.label} (${top2.distance.toFixed(3)}) | MARGIN: ${margin.toFixed(3)}`);
                                   
-                                  // Require at least 0.04 margin difference to prevent mistaken identity between twins/similar faces
-                                  if (margin >= 0.04) {
+                                  // Dynamic margin: If it's a very strong match (< 0.35), we don't need a huge margin difference.
+                                  const requiredMargin = top1.distance < 0.35 ? 0.02 : 0.04;
+                                  
+                                  if (margin >= requiredMargin) {
                                       currentLabel = top1.label;
                                   } else {
                                       marginTooClose = true;
-                                      console.warn(`[SCANNER WARNING] Track #${bestTrackerId} Margin too close! Rejecting ${top1.label}`);
+                                      console.warn(`[SCANNER WARNING] Track #${bestTrackerId} Margin too close (${margin.toFixed(3)} < ${requiredMargin})! Rejecting ${top1.label}`);
                                   }
                               }
                               
