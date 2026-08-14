@@ -373,35 +373,43 @@ export default function FaceScanner() {
                           drawColor = '#06B6D4'; // Cyan (so it doesn't conflict with Yellow 'Already Present')
                           labelText = 'Terlalu Jauh (Maju Sedikit)';
                       } else {
-                          // If not locked, evaluate current frame
-                          if (!tracker.lockedIdentity && faceMatcher) {
+                          // If not locked, or locked as unknown, evaluate current frame
+                          if ((!tracker.lockedIdentity || tracker.lockedIdentity === 'unknown') && faceMatcher) {
                               const bestMatch = faceMatcher.findBestMatch(detection.descriptor);
                               let currentLabel = 'unknown';
                               if (bestMatch.label !== 'unknown' && bestMatch.distance < 0.40) {
                                   currentLabel = bestMatch.label;
-                              }
-                              
-                              tracker.history.push(currentLabel);
-                              if (tracker.history.length > 5) {
-                                  tracker.history.shift();
-                              }
-                              
-                              // Check consensus if we have 5 frames
-                              if (tracker.history.length === 5) {
-                                  const counts: {[key: string]: number} = {};
-                                  let maxCount = 0;
-                                  let majorityLabel = 'unknown';
-                                  tracker.history.forEach(label => {
-                                      counts[label] = (counts[label] || 0) + 1;
-                                      if (counts[label] > maxCount) {
-                                          maxCount = counts[label];
-                                          majorityLabel = label;
-                                      }
-                                  });
                                   
-                                  // Lock if majority is >= 3
-                                  if (maxCount >= 3) {
-                                      tracker.lockedIdentity = majorityLabel;
+                                  // If we were previously stuck on 'unknown', instantly recover and lock to the real identity
+                                  if (tracker.lockedIdentity === 'unknown') {
+                                      tracker.lockedIdentity = currentLabel;
+                                      tracker.history = Array(5).fill(currentLabel);
+                                  }
+                              }
+                              
+                              if (!tracker.lockedIdentity) {
+                                  tracker.history.push(currentLabel);
+                                  if (tracker.history.length > 5) {
+                                      tracker.history.shift();
+                                  }
+                                  
+                                  // Check consensus if we have 5 frames
+                                  if (tracker.history.length === 5) {
+                                      const counts: {[key: string]: number} = {};
+                                      let maxCount = 0;
+                                      let majorityLabel = 'unknown';
+                                      tracker.history.forEach(label => {
+                                          counts[label] = (counts[label] || 0) + 1;
+                                          if (counts[label] > maxCount) {
+                                              maxCount = counts[label];
+                                              majorityLabel = label;
+                                          }
+                                      });
+                                      
+                                      // Lock if majority is >= 3
+                                      if (maxCount >= 3) {
+                                          tracker.lockedIdentity = majorityLabel;
+                                      }
                                   }
                               }
                           }
