@@ -378,10 +378,37 @@ export default function FaceScanner() {
                       } else {
                           // If not locked, or locked as unknown, evaluate current frame
                           if ((!tracker.lockedIdentity || tracker.lockedIdentity === 'unknown') && faceMatcher) {
-                              const bestMatch = faceMatcher.findBestMatch(detection.descriptor);
+                              // Top-1 vs Top-2 Margin Protection
+                              let top1 = { label: 'unknown', distance: 1.0 };
+                              let top2 = { label: 'unknown', distance: 1.0 };
+                              
+                              faceMatcher.labeledDescriptors.forEach((ld: any) => {
+                                  let minDistance = 1.0;
+                                  ld.descriptors.forEach((desc: Float32Array) => {
+                                      const dist = faceapi.euclideanDistance(detection.descriptor, desc);
+                                      if (dist < minDistance) minDistance = dist;
+                                  });
+                                  
+                                  if (minDistance < top1.distance) {
+                                      top2 = { ...top1 };
+                                      top1 = { label: ld.label, distance: minDistance };
+                                  } else if (minDistance < top2.distance) {
+                                      top2 = { label: ld.label, distance: minDistance };
+                                  }
+                              });
+
                               let currentLabel = 'unknown';
-                              if (bestMatch.label !== 'unknown' && bestMatch.distance < 0.40) {
-                                  currentLabel = bestMatch.label;
+                              let marginTooClose = false;
+                              
+                              // Check threshold and margin
+                              if (top1.label !== 'unknown' && top1.distance < 0.40) {
+                                  const margin = top2.distance - top1.distance;
+                                  // Require at least 0.04 margin difference to prevent mistaken identity between twins/similar faces
+                                  if (margin >= 0.04) {
+                                      currentLabel = top1.label;
+                                  } else {
+                                      marginTooClose = true;
+                                  }
                               }
                               
                               tracker.history.push(currentLabel);
@@ -406,6 +433,12 @@ export default function FaceScanner() {
                                   if (maxCount >= 3) {
                                       tracker.lockedIdentity = majorityLabel;
                                   }
+                              }
+
+                              // Visual feedback for margin issue while processing
+                              if (marginTooClose && (!tracker.lockedIdentity || tracker.lockedIdentity === 'unknown')) {
+                                  drawColor = '#F97316'; // Orange
+                                  labelText = 'Margin Too Close (Mirip Dua Orang)';
                               }
                           }
                           
