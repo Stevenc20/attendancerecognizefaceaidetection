@@ -403,11 +403,16 @@ export default function FaceScanner() {
                               // Check threshold and margin
                               if (top1.label !== 'unknown' && top1.distance < 0.40) {
                                   const margin = top2.distance - top1.distance;
+                                  
+                                  // Log detailed debug info to console for the user to audit
+                                  console.log(`[SCANNER DEBUG] Detection Score: ${(detection.detection.score * 100).toFixed(1)}% | TOP 1: ${top1.label} (${top1.distance.toFixed(3)}) | TOP 2: ${top2.label} (${top2.distance.toFixed(3)}) | MARGIN: ${margin.toFixed(3)}`);
+                                  
                                   // Require at least 0.04 margin difference to prevent mistaken identity between twins/similar faces
                                   if (margin >= 0.04) {
                                       currentLabel = top1.label;
                                   } else {
                                       marginTooClose = true;
+                                      console.warn(`[SCANNER WARNING] Margin too close! Rejecting ${top1.label}`);
                                   }
                               }
                               
