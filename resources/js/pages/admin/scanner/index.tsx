@@ -170,8 +170,8 @@ export default function FaceScanner() {
                         return new faceapi.LabeledFaceDescriptors(JSON.stringify(data.user), descriptorsArray);
                     });
                     
-                    // Set threshold back to 0.40 for strict matching (preventing false positives)
-                    const matcher = new faceapi.FaceMatcher(labeledDescriptors, 0.40);
+                    // Set threshold back to 0.42 for balanced strictness (handles glasses/variations while rejecting false positives)
+                    const matcher = new faceapi.FaceMatcher(labeledDescriptors, 0.42);
                     setFaceMatcher(matcher);
                     setStatusText(`Synced ${embeddingsData.length} enrolled faces.`);
                 }
@@ -309,7 +309,7 @@ export default function FaceScanner() {
                       let distance = 0;
   
                       if (box.width < 120 || box.height < 120) {
-                          drawColor = '#FBBF24'; // Yellow
+                          drawColor = '#06B6D4'; // Cyan (so it doesn't conflict with Yellow 'Already Present')
                           labelText = 'Terlalu Jauh (Maju Sedikit)';
                       } else if (faceMatcher) {
                           const bestMatch = faceMatcher.findBestMatch(detection.descriptor);
@@ -320,7 +320,7 @@ export default function FaceScanner() {
                                   sendSecurityAlert('unknown_face', 'Unknown face detected lingering in frame for an extended period.');
                                   staticFramesRef.current['unknown'] = 0;
                               }
-                          } else if (bestMatch.distance < 0.40) {
+                          } else if (bestMatch.distance < 0.42) {
                               staticFramesRef.current['unknown'] = 0; // reset unknown counter
                               user = JSON.parse(bestMatch.label);
                               distance = bestMatch.distance;
