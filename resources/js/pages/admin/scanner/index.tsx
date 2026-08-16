@@ -88,6 +88,7 @@ export default function FaceScanner() {
 
     // Liveness and Logging Refs
     const alreadyPresentUsersRef = useRef<Set<number>>(new Set());
+    const attendancePendingRef = useRef<Set<number>>(new Set());
     const logsRef = useRef<LogEntry[]>([]);
     const detectLoopIdRef = useRef<number>(0);
     const lastBlinkRef = useRef<{ [key: number]: number }>({});
@@ -315,9 +316,9 @@ export default function FaceScanner() {
                   const currentTrackers = trackersRef.current;
                   const now = Date.now();
                   
-                  // 1. Clean up old trackers (> 1 sec unseen)
+                  // 1. Clean up old trackers (> 3 sec unseen) for Cooldown
                   Object.keys(currentTrackers).forEach(id => {
-                      if (now - currentTrackers[Number(id)].lastSeen > 1000) {
+                      if (now - currentTrackers[Number(id)].lastSeen > 3000) {
                           delete currentTrackers[Number(id)];
                       }
                   });
@@ -525,9 +526,14 @@ export default function FaceScanner() {
 
                             // Display Logic Priority
                             if (alreadyPresentUsersRef.current.has(user.id)) {
-                                // Already recorded today -> immediately show Yellow (no need to prove liveness again)
-                                drawColor = '#FBBF24'; // Yellow
-                                labelText = `${firstName} (Recorded)`;
+                                // Already recorded today -> immediately show Green and prevent processAttendance
+                                drawColor = '#10B981'; // Green
+                                labelText = `${firstName} (Sudah Absen)`;
+                                isLive = false; 
+                            } else if (attendancePendingRef.current.has(user.id)) {
+                                drawColor = '#F59E0B'; // Amber
+                                labelText = `${firstName} (Memproses...)`;
+                                isLive = false;
                             } else {
                                 // Passed liveness
                                 const nowTime = new Date();
@@ -583,6 +589,10 @@ export default function FaceScanner() {
     const processAttendance = (user: FaceEmbedding['user'], distance: number) => {
         const now = Date.now();
 
+        // 1. GLOBAL STATE MACHINE CHECKS
+        if (alreadyPresentUsersRef.current.has(user.id)) return;
+        if (attendancePendingRef.current.has(user.id)) return;
+
         // Liveness gate: never record for a face that has not moved recently
         const history = yawHistoryRef.current[user.id] || [];
         const yawRange = history.length > 5 ? Math.max(...history) - Math.min(...history) : 0;
@@ -600,50 +610,26 @@ export default function FaceScanner() {
         }
 
         lastRecognizedRef.current[user.id] = now;
+        
+        // 2. MARK AS PENDING
+        attendancePendingRef.current.add(user.id);
 
-        if (alreadyPresentUsersRef.current.has(user.id)) {
-            const existing = logsRef.current.find(l => l.user.id === user.id && l.status !== 'error');
-
-            if (existing) {
-                setLogs(prev => prev.map(l => l.id === existing.id ? { ...l, count: l.count + 1, status: 'already', message: 'Already Present' } : l));
-            } else {
-                const time = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-
-                const alreadyLog: LogEntry = {
-                    id: Math.random().toString(36).substring(7),
-                    time,
-                    user,
-                    status: 'already',
-                    message: 'Already Present',
-                    count: 1
-                };
-
-                setLogs(prev => [alreadyLog, ...prev].slice(0, 8));
-            }
-
-            return;
-        }
-
-        // Play sound
-        const audio = new Audio('/sounds/ding.mp3'); // We'll assume a sound file exists or just let it fail silently
-        audio.play().catch(e => {});
-
-        // Add optimistic log
+        // Optimistic log (Pending)
         const logId = Math.random().toString(36).substring(7);
         const time = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
         const nowTime = new Date();
         const isLate = nowTime.getHours() > 6 || (nowTime.getHours() === 6 && nowTime.getMinutes() >= 20);
         
-        const newLog: LogEntry = {
+        const pendingLog: LogEntry = {
             id: logId,
             time,
             user,
-            status: isLate ? 'late' : 'success',
-            message: isLate ? 'Late' : 'Recorded',
+            status: isLate ? 'late' : 'success', // Show optimistic status
+            message: 'Memproses...',
             count: 1
         };
 
-        setLogs(prev => [newLog, ...prev].slice(0, 8)); // Keep last 8
+        setLogs(prev => [pendingLog, ...prev].slice(0, 8));
 
         // Send to backend
         fetch(attendance.url(), {
@@ -661,24 +647,31 @@ export default function FaceScanner() {
         .then(async res => {
             if (!res.ok) {
                 const detail = await res.text().catch(() => '');
-
                 throw new Error(`Attendance request failed with HTTP ${res.status}. ${detail.slice(0, 120)}`);
             }
-
             return (await parseJsonResponse(res)) as { message?: string };
         })
-          .then(data => {
-              if (data.message === 'Attendance already recorded for today') {
-                  alreadyPresentUsersRef.current.add(user.id);
-                  setLogs(prev => prev.map(l => l.id === logId ? { ...l, status: 'already', message: 'Already Present' } : l));
-              } else {
-                  // If successful, also mark as present for future frames
-                  alreadyPresentUsersRef.current.add(user.id);
-              }
-          })
+        .then(data => {
+            // 3. DATABASE IS SOURCE OF TRUTH
+            if (data.message === 'Attendance already recorded for today') {
+                alreadyPresentUsersRef.current.add(user.id);
+                setLogs(prev => prev.map(l => l.id === logId ? { ...l, status: 'already', message: 'Sudah Absen' } : l));
+            } else {
+                alreadyPresentUsersRef.current.add(user.id);
+                setLogs(prev => prev.map(l => l.id === logId ? { ...l, message: isLate ? 'Terlambat' : 'Berhasil' } : l));
+                
+                // Play sound ONLY on fresh success
+                const audio = new Audio('/sounds/ding.mp3'); 
+                audio.play().catch(e => {});
+            }
+        })
         .catch(err => {
             console.error("Failed to record", err);
-            setLogs(prev => prev.map(l => l.id === logId ? { ...l, status: 'error', message: 'Network Error' } : l));
+            setLogs(prev => prev.map(l => l.id === logId ? { ...l, status: 'error', message: 'Gagal Jaringan' } : l));
+        })
+        .finally(() => {
+            // Free the lock so it can be retried if it failed
+            attendancePendingRef.current.delete(user.id);
         });
     };
 
