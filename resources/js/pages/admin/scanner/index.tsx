@@ -2,7 +2,7 @@ import { Head, Link, router } from '@inertiajs/react';
 import * as faceapi from '@vladmandic/face-api';
 import { Camera, CheckCircle, Loader2, Maximize, AlertCircle, XCircle, Sun, Moon } from 'lucide-react';
 import React, { useEffect, useRef, useState } from 'react';
-import { estimateEAR, isEyeClosed, estimateYaw, assessFaceQuality } from '@/lib/liveness';
+import { assessFaceQuality, isEyeClosed, estimateEAR, getFaceBrightness, estimateYaw, estimatePitch } from '@/lib/liveness';
 import { attendance, embeddings } from '@/routes/admin/scanner';
 
 const LIVENESS_WINDOW_MS = 10000;
@@ -355,17 +355,27 @@ export default function FaceScanner() {
 
                       // Default drawing params
                       let drawColor = '#3B82F6'; // Blue for processing
-                      let labelText = 'Processing...';
+                      let labelText = 'Menganalisis wajah...';
                       let isLive = false;
                       let user: any = null;
                       let distance = 0;
-                      // 1. TRUE FACE QUALITY GATE
-                      const quality = assessFaceQuality(detection, false); // For scanner, strict pose helps accuracy
-  
+                      
+                      // 1. P2 FACE QUALITY GATE (Includes size, pose, brightness)
+                      const brightness = getFaceBrightness(video, box);
+                      const quality = assessFaceQuality(detection, false, brightness); 
+                      
+                      // Debug Output for Calibration
+                      console.log(`[P2 QUALITY] Track #${bestTrackerId} | Resol: ${video.videoWidth}x${video.videoHeight} | Size: ${Math.round(box.width)}x${Math.round(box.height)} | Brightness: ${Math.round(brightness)} | Quality: ${quality.score.toFixed(2)} | Pose: Y${Math.round(estimateYaw(detection.landmarks))} P${Math.round(estimatePitch(detection.landmarks))} | Decision: ${quality.isGood ? 'RECOGNIZE' : 'SKIP'}`);
+
                       if (!quality.isGood) {
-                          // Cyan for distance, Amber for blurry/pose
-                          drawColor = detection.detection.box.width < 90 ? '#06B6D4' : '#F59E0B';
-                          labelText = quality.reasons[0] || 'Wajah Kurang Jelas';
+                          // Cyan for distance, Amber for blurry/pose/brightness
+                          if (box.width < 80) {
+                              drawColor = '#06B6D4'; // Cyan
+                              labelText = 'Terlalu Jauh';
+                          } else {
+                              drawColor = '#F59E0B'; // Amber
+                              labelText = quality.reasons[0] || 'Wajah Kurang Jelas';
+                          }
                       } else {
                           // If not locked, or locked as unknown, evaluate current frame
                           if (!tracker.lockedIdentity || tracker.lockedIdentity === 'unknown') {
@@ -467,7 +477,7 @@ export default function FaceScanner() {
                               // Visual feedback for margin issue while processing
                               if (tracker.marginTooClose) {
                                   drawColor = '#F97316'; // Orange
-                                  labelText = 'Mirip Dua Orang (Maju Sedikit)';
+                                  labelText = 'Wajah Terlalu Mirip';
                               }
                           } else if (tracker.lockedIdentity && tracker.lockedIdentity !== 'unknown') {
                               // IDENTITY VERIFICATION PASCA-LOCK (Prevent Track Hijacking)
