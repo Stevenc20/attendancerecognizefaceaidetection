@@ -50,6 +50,8 @@ type TrackData = {
     lockedIdentity: string | null;
     lastSeen: number;
     box: faceapi.IRect;
+    unknownCount?: number;
+    marginTooClose?: boolean;
 };
 
 const computeIoU = (box1: faceapi.IRect, box2: faceapi.IRect) => {
@@ -96,6 +98,7 @@ export default function FaceScanner() {
     const lastRecognizedRef = useRef<{ [key: number]: number }>({});
     const trackersRef = useRef<{ [trackId: number]: TrackData }>({});
     const nextTrackIdRef = useRef<number>(1);
+    const isRecognizingRef = useRef<boolean>(false);
     
     useEffect(() => {
         logsRef.current = logs;
@@ -297,10 +300,9 @@ export default function FaceScanner() {
             }
 
             try {
-                // Use SsdMobilenetv1 for maximum accuracy and stable bounding boxes
+                // P1: DETECTION & TRACKING ONLY (Super fast, no descriptors computed synchronously)
                 const detections = await faceapi.detectAllFaces(video, new faceapi.SsdMobilenetv1Options({ minConfidence: 0.6 }))
-                    .withFaceLandmarks()
-                    .withFaceDescriptors();
+                    .withFaceLandmarks();
 
                 if (detectLoopIdRef.current !== currentLoopId) {
                     return;
@@ -321,7 +323,7 @@ export default function FaceScanner() {
                   });
 
                   // We will draw standard faceapi boxes instead of custom drawing
-                  resizedDetections.forEach(detection => {
+                  resizedDetections.forEach((detection, index) => {
                       const box = detection.detection.box;
 
                       // 2. Match detections to trackers by IoU
@@ -366,103 +368,110 @@ export default function FaceScanner() {
                           labelText = quality.reasons[0] || 'Wajah Kurang Jelas';
                       } else {
                           // If not locked, or locked as unknown, evaluate current frame
-                          if ((!tracker.lockedIdentity || tracker.lockedIdentity === 'unknown') && faceMatcher) {
-                              // Top-1 vs Top-2 Margin Protection
-                              let top1 = { label: 'unknown', distance: 1.0 };
-                              let top2 = { label: 'unknown', distance: 1.0 };
+                          if (!tracker.lockedIdentity || tracker.lockedIdentity === 'unknown') {
                               
-                              faceMatcher.labeledDescriptors.forEach((ld: any) => {
-                                  let minDistance = 1.0;
-                                  ld.descriptors.forEach((desc: Float32Array) => {
-                                      const dist = faceapi.euclideanDistance(detection.descriptor, desc);
-                                      if (dist < minDistance) minDistance = dist;
-                                  });
+                              // Trigger async recognition if worker is free! (Best Frame & Early Exit)
+                              if (!isRecognizingRef.current && faceMatcher && bestTrackerId !== null) {
+                                  isRecognizingRef.current = true;
+                                  const currentTId = bestTrackerId;
                                   
-                                  if (minDistance < top1.distance) {
-                                      top2 = { ...top1 };
-                                      top1 = { label: ld.label, distance: minDistance };
-                                  } else if (minDistance < top2.distance) {
-                                      top2 = { label: ld.label, distance: minDistance };
-                                  }
-                              });
+                                  // Capture exactly this frame to guarantee identical preprocessing
+                                  const frameCanvas = document.createElement('canvas');
+                                  frameCanvas.width = video.videoWidth;
+                                  frameCanvas.height = video.videoHeight;
+                                  frameCanvas.getContext('2d')?.drawImage(video, 0, 0, frameCanvas.width, frameCanvas.height);
+                                  
+                                  const originalDetection = detections[index];
+                                  
+                                  // Async IIFE (Fire and Forget)
+                                  (async () => {
+                                      try {
+                                          const descriptor = await faceapi.computeFaceDescriptor(frameCanvas, originalDetection);
+                                          
+                                          // TOP-1 / TOP-2 LOGIC
+                                          let top1 = { label: 'unknown', distance: 1.0 };
+                                          let top2 = { label: 'unknown', distance: 1.0 };
+                                          
+                                          faceMatcher.labeledDescriptors.forEach((ld: any) => {
+                                              let minDistance = 1.0;
+                                              ld.descriptors.forEach((desc: Float32Array) => {
+                                                  const dist = faceapi.euclideanDistance(descriptor, desc);
+                                                  if (dist < minDistance) minDistance = dist;
+                                              });
+                                              if (minDistance < top1.distance) {
+                                                  top2 = { ...top1 };
+                                                  top1 = { label: ld.label, distance: minDistance };
+                                              } else if (minDistance < top2.distance) {
+                                                  top2 = { label: ld.label, distance: minDistance };
+                                              }
+                                          });
 
-                              let currentLabel = 'unknown';
-                              let marginTooClose = false;
-                              
-                              // Check threshold and margin
-                              if (top1.label !== 'unknown' && top1.distance < 0.40) {
-                                  const margin = top2.distance - top1.distance;
-                                  
-                                  // Log detailed debug info to console for the user to audit
-                                  console.log(`[SCANNER DEBUG] Track #${bestTrackerId} | Detection: ${(detection.detection.score * 100).toFixed(1)}% | TOP 1: ${top1.label} (${top1.distance.toFixed(3)}) | TOP 2: ${top2.label} (${top2.distance.toFixed(3)}) | MARGIN: ${margin.toFixed(3)}`);
-                                  
-                                  // Dynamic margin: If it's a very strong match (< 0.35), we don't need a huge margin difference.
-                                  const requiredMargin = top1.distance < 0.35 ? 0.02 : 0.04;
-                                  
-                                  if (margin >= requiredMargin) {
-                                      currentLabel = top1.label;
-                                  } else {
-                                      marginTooClose = true;
-                                      console.warn(`[SCANNER WARNING] Track #${bestTrackerId} Margin too close (${margin.toFixed(3)} < ${requiredMargin})! Rejecting ${top1.label}`);
-                                  }
-                              }
-                              
-                              // Clean Consensus: Only push valid labels. Track unknowns separately.
-                              if (currentLabel !== 'unknown') {
-                                  tracker.history.push(currentLabel);
-                              } else {
-                                  tracker.unknownCount = (tracker.unknownCount || 0) + 1;
-                              }
-                              
-                              if (tracker.history.length > 4) {
-                                  tracker.history.shift();
-                              }
-                              
-                              // Lock as UNKNOWN if we see it consistently and no valid identity is building up
-                              if (tracker.unknownCount >= 6 && tracker.history.length < 2) {
-                                  tracker.lockedIdentity = 'unknown';
-                              }
-                              
-                              // Check consensus if we have 4 VALID frames
-                              if (tracker.history.length === 4) {
-                                  const counts: {[key: string]: number} = {};
-                                  let maxCount = 0;
-                                  let majorityLabel = 'unknown';
-                                  tracker.history.forEach(label => {
-                                      counts[label] = (counts[label] || 0) + 1;
-                                      if (counts[label] > maxCount) {
-                                          maxCount = counts[label];
-                                          majorityLabel = label;
+                                          let currentLabel = 'unknown';
+                                          let marginTooClose = false;
+                                          
+                                          if (top1.label !== 'unknown' && top1.distance < 0.40) {
+                                              const margin = top2.distance - top1.distance;
+                                              console.log(`[SCANNER DEBUG] Track #${currentTId} | Quality: ${(quality.score * 100).toFixed(1)}% | TOP 1: ${top1.label} (${top1.distance.toFixed(3)}) | TOP 2: ${top2.label} (${top2.distance.toFixed(3)}) | MARGIN: ${margin.toFixed(3)}`);
+                                              const requiredMargin = top1.distance < 0.35 ? 0.02 : 0.04;
+                                              if (margin >= requiredMargin) {
+                                                  currentLabel = top1.label;
+                                              } else {
+                                                  marginTooClose = true;
+                                                  console.warn(`[SCANNER WARNING] Track #${currentTId} Margin too close (${margin.toFixed(3)} < ${requiredMargin})! Rejecting ${top1.label}`);
+                                              }
+                                          }
+                                          
+                                          // Update the tracker's history!
+                                          if (currentTrackers[currentTId]) {
+                                              const t = currentTrackers[currentTId];
+                                              
+                                              // Clean Consensus
+                                              if (currentLabel !== 'unknown') {
+                                                  t.history.push(currentLabel);
+                                              } else {
+                                                  t.unknownCount = (t.unknownCount || 0) + 1;
+                                              }
+                                              if (t.history.length > 4) t.history.shift();
+                                              
+                                              if (t.unknownCount && t.unknownCount >= 6 && t.history.length < 2) {
+                                                  t.lockedIdentity = 'unknown';
+                                              }
+                                              
+                                              // Check Consensus
+                                              if (t.history.length === 4) {
+                                                  const counts: {[key: string]: number} = {};
+                                                  let maxCount = 0;
+                                                  let majorityLabel = 'unknown';
+                                                  t.history.forEach((label: string) => {
+                                                      counts[label] = (counts[label] || 0) + 1;
+                                                      if (counts[label] > maxCount) { maxCount = counts[label]; majorityLabel = label; }
+                                                  });
+                                                  if (maxCount >= 3) {
+                                                      t.lockedIdentity = majorityLabel;
+                                                      console.log(`[SCANNER] Track #${currentTId} LOCKED to ${majorityLabel}`);
+                                                  } else {
+                                                      t.history = [];
+                                                  }
+                                              }
+                                              
+                                              t.marginTooClose = marginTooClose;
+                                          }
+                                      } catch (err) {
+                                          console.error("[SCANNER ASYNC] Recognition error:", err);
+                                      } finally {
+                                          isRecognizingRef.current = false;
                                       }
-                                  });
-                                  
-                                  // Lock if majority is >= 3 (out of 4 valid frames)
-                                  if (maxCount >= 3) {
-                                      tracker.lockedIdentity = majorityLabel;
-                                      console.log(`[SCANNER] Track #${bestTrackerId} LOCKED to ${majorityLabel}`);
-                                  } else {
-                                      // Conflicting valid labels (e.g. 2 Aisyah, 2 Steven) -> reset to prevent false lock
-                                      tracker.history = [];
-                                  }
+                                  })();
                               }
 
                               // Visual feedback for margin issue while processing
-                              if (marginTooClose && (!tracker.lockedIdentity || tracker.lockedIdentity === 'unknown')) {
+                              if (tracker.marginTooClose) {
                                   drawColor = '#F97316'; // Orange
                                   labelText = 'Mirip Dua Orang (Maju Sedikit)';
                               }
                           } else if (tracker.lockedIdentity && tracker.lockedIdentity !== 'unknown') {
                               // IDENTITY VERIFICATION PASCA-LOCK (Prevent Track Hijacking)
-                              if (faceMatcher) {
-                                  const bestMatch = faceMatcher.findBestMatch(detection.descriptor);
-                                  // Jika wajah tiba-tiba sangat mirip orang lain (bukan identity yang dilock)
-                                  if (bestMatch.label !== tracker.lockedIdentity && bestMatch.distance < 0.38) {
-                                      console.warn(`[SCANNER ALERT] Track #${bestTrackerId} Identity Hijack Detected! Was ${tracker.lockedIdentity}, now looks like ${bestMatch.label}. Re-evaluating...`);
-                                      tracker.lockedIdentity = null;
-                                      tracker.history = [];
-                                      tracker.unknownCount = 0;
-                                  }
-                              }
+                              // Skipped in P1 to save resources, relying entirely on IoU Tracker
                           }
                           
                           if (tracker.lockedIdentity === 'unknown') {
