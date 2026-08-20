@@ -85,6 +85,7 @@ class StudentController extends Controller
             'classroom_id' => $request->classroom_id,
             'role' => User::ROLE_STUDENT,
             'account_status' => User::STATUS_ACTIVE,
+            'qr_token' => \Illuminate\Support\Str::random(32),
         ]);
 
         return redirect()->back()->with('success', 'Student created successfully.');
