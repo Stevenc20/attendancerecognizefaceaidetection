@@ -44,6 +44,20 @@ export default function QRScannerPage() {
         return () => clearInterval(interval);
     }, []);
 
+    // Auto-submit for physical scanners that don't send Enter key
+    useEffect(() => {
+        if (inputValue.length > 5) {
+            const timeout = setTimeout(() => {
+                const token = inputValue.trim();
+                if (token.length > 5) {
+                    processQRAttendance(token);
+                }
+                setInputValue('');
+            }, 100); // Wait 100ms after last character is typed
+            return () => clearTimeout(timeout);
+        }
+    }, [inputValue]);
+
     const handleInputSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         const token = inputValue.trim();
