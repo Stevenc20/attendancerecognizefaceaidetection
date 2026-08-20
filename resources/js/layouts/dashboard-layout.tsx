@@ -39,7 +39,6 @@ const getNavItems = (role: string) => {
                 { name: 'Dashboard', icon: LayoutGrid, href: dashboardUrl },
                 { name: 'Student Management', icon: GraduationCap, href: '/admin/students' },
                 { name: 'Teacher Management', icon: UserCog, href: '/admin/teachers' },
-                { name: 'Face AI', icon: Camera, href: '/admin/scanner' },
                 { name: 'Scanner', icon: ScanLine, href: '/admin/qr-scanner' },
                 { name: 'Data Import', icon: UploadCloud, href: '/admin/import' },
                 { name: 'Attendance Sessions', icon: ClipboardList, href: '/admin/sessions' },
