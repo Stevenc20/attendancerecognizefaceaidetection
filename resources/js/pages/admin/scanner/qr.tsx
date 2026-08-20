@@ -21,7 +21,8 @@ export default function QRScannerPage() {
     const [logs, setLogs] = useState<LogEntry[]>([]);
     const [lastScan, setLastScan] = useState<LogEntry | null>(null);
     
-    const qrBufferRef = useRef<string>('');
+    const [inputValue, setInputValue] = useState('');
+    const inputRef = useRef<HTMLInputElement>(null);
     const processingRef = useRef<boolean>(false);
 
     // Live clock timer
@@ -30,24 +31,26 @@ export default function QRScannerPage() {
         return () => clearInterval(timer);
     }, []);
 
-    // QR Code Scanner Event Listener
+    // Auto-focus the input field so it's always ready for the physical scanner
     useEffect(() => {
-        const handleKeyDown = (e: KeyboardEvent) => {
-            if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
-
-            if (e.key === 'Enter') {
-                if (qrBufferRef.current.length > 5) {
-                    processQRAttendance(qrBufferRef.current);
-                }
-                qrBufferRef.current = '';
-            } else if (e.key.length === 1) {
-                qrBufferRef.current += e.key;
+        const focusInput = () => {
+            if (inputRef.current && document.activeElement !== inputRef.current) {
+                inputRef.current.focus();
             }
         };
-
-        window.addEventListener('keydown', handleKeyDown);
-        return () => window.removeEventListener('keydown', handleKeyDown);
+        focusInput();
+        const interval = setInterval(focusInput, 2000);
+        return () => clearInterval(interval);
     }, []);
+
+    const handleInputSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        const token = inputValue.trim();
+        if (token.length > 5) {
+            processQRAttendance(token);
+        }
+        setInputValue('');
+    };
 
     const processQRAttendance = (qrToken: string) => {
         if (processingRef.current) return;
@@ -110,7 +113,7 @@ export default function QRScannerPage() {
             <Head title="QR Scanner — SMKN 40" />
             
             {/* Left Side: Status / Scanner */}
-            <div className="flex-1 flex flex-col p-8 items-center justify-center relative">
+            <div className="flex-1 flex flex-col p-8 items-center justify-center relative" onClick={() => inputRef.current?.focus()}>
                 <Link href="/admin/dashboard" className="absolute top-8 left-8 text-gray-500 hover:text-gray-900 font-medium">
                     &larr; Back to Dashboard
                 </Link>
@@ -128,13 +131,25 @@ export default function QRScannerPage() {
                     </div>
                 </div>
 
+                {/* HIDDEN INPUT FOR PHYSICAL SCANNER */}
+                <form onSubmit={handleInputSubmit} className="mb-6 w-full max-w-lg">
+                    <input 
+                        ref={inputRef}
+                        type="password" 
+                        value={inputValue}
+                        onChange={(e) => setInputValue(e.target.value)}
+                        className="opacity-0 absolute h-0 w-0"
+                        autoFocus
+                    />
+                </form>
+
                 {!lastScan ? (
                     <div className="bg-white rounded-3xl p-12 shadow-sm border border-gray-100 flex flex-col items-center max-w-lg w-full text-center">
                         <div className="w-32 h-32 bg-amber-100 rounded-full flex items-center justify-center mb-6">
                             <ScanLine className="w-16 h-16 text-amber-600 animate-pulse" />
                         </div>
-                        <h2 className="text-2xl font-bold text-gray-900 mb-2">Silakan Scan QR Code</h2>
-                        <p className="text-gray-500">Tembakkan barcode scanner ke Kartu Pelajar Anda.</p>
+                        <h2 className="text-2xl font-bold text-gray-900 mb-2">SIAP MENERIMA SCAN QR</h2>
+                        <p className="text-gray-500 font-medium">Langsung tembak Kartu Pelajar pakai alat scanner.</p>
                     </div>
                 ) : (
                     <div className={`bg-white rounded-3xl p-10 shadow-lg border-t-8 flex flex-col items-center max-w-lg w-full text-center animate-in zoom-in duration-300 ${lastScan.status === 'success' ? 'border-emerald-500' : lastScan.status === 'already' ? 'border-amber-500' : 'border-red-500'}`}>
