@@ -33,10 +33,16 @@ export default function AdminDashboard({ metrics, recentActivity }: { metrics: a
                         {greeting}, {user.name}.
                     </h1>
                 </div>
-                <a href="/admin/qr-scanner" className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-[#D40000] hover:bg-red-700 text-white font-bold rounded-xl transition-all shadow-[0_4px_14px_rgba(212,0,0,0.4)] hover:-translate-y-0.5 hover:shadow-[0_6px_20px_rgba(212,0,0,0.6)]">
-                    <ScanLine size={20} />
-                    Launch QR Scanner
-                </a>
+                <div className="flex gap-3 mt-4 lg:mt-0">
+                    <a href="/admin/scanner" className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-[#080B1A] hover:bg-gray-800 text-white font-bold rounded-xl transition-all shadow-[0_4px_14px_rgba(8,11,26,0.4)] hover:-translate-y-0.5">
+                        <Camera size={20} />
+                        Launch Face AI
+                    </a>
+                    <a href="/admin/qr-scanner" className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-[#D40000] hover:bg-red-700 text-white font-bold rounded-xl transition-all shadow-[0_4px_14px_rgba(212,0,0,0.4)] hover:-translate-y-0.5 hover:shadow-[0_6px_20px_rgba(212,0,0,0.6)]">
+                        <ScanLine size={20} />
+                        Launch QR Scanner
+                    </a>
+                </div>
             </header>
 
             {/* ── METRICS ── */}

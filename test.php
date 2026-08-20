@@ -1,0 +1,1 @@
+<?php require 'vendor/autoload.php'; $app = require_once 'bootstrap/app.php'; $kernel = $app->make(Illuminate\Contracts\Http\Kernel::class); $user = \App\Models\User::where('role', 'admin')->first(); auth()->login($user); $response = $kernel->handle(Illuminate\Http\Request::create('/admin/scanner')); echo strlen(json_encode($response->headers->all()));
