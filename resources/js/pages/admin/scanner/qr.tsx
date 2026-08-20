@@ -149,7 +149,13 @@ export default function QRScannerPage() {
                             <ScanLine className="w-16 h-16 text-amber-600 animate-pulse" />
                         </div>
                         <h2 className="text-2xl font-bold text-gray-900 mb-2">SIAP MENERIMA SCAN QR</h2>
-                        <p className="text-gray-500 font-medium">Langsung tembak Kartu Pelajar pakai alat scanner.</p>
+                        <p className="text-gray-500 font-medium mb-6">Langsung tembak Kartu Pelajar pakai alat scanner.</p>
+                        
+                        <div className="inline-flex items-center gap-2 bg-emerald-50 px-4 py-2 rounded-full border border-emerald-100">
+                            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping absolute"></span>
+                            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 relative"></span>
+                            <span className="text-sm font-bold text-emerald-700">Alat Scanner Terdeteksi & Aktif</span>
+                        </div>
                     </div>
                 ) : (
                     <div className={`bg-white rounded-3xl p-10 shadow-lg border-t-8 flex flex-col items-center max-w-lg w-full text-center animate-in zoom-in duration-300 ${lastScan.status === 'success' ? 'border-emerald-500' : lastScan.status === 'already' ? 'border-amber-500' : 'border-red-500'}`}>
