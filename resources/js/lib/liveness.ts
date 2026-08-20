@@ -113,10 +113,10 @@ export const assessFaceQuality = (
     
     // 4. Brightness Check
     if (brightness !== null) {
-        if (brightness < 40) {
-            score *= 0.7;
-            reasons.push("Wajah Terlalu Gelap");
-        } else if (brightness > 230) {
+        if (brightness < 55) {
+            score *= 0.6;
+            reasons.push("Terlalu Gelap (Kurang Cahaya)");
+        } else if (brightness > 210) {
             score *= 0.7;
             reasons.push("Overexposure / Silau");
         }

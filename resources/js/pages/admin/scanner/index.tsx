@@ -421,10 +421,10 @@ export default function FaceScanner() {
                                           let currentLabel = 'unknown';
                                           let marginTooClose = false;
                                           
-                                          if (top1.label !== 'unknown' && top1.distance < 0.40) {
+                                          if (top1.label !== 'unknown' && top1.distance < 0.38) {
                                               const margin = top2.distance - top1.distance;
                                               console.log(`[SCANNER DEBUG] Track #${currentTId} | Quality: ${(quality.score * 100).toFixed(1)}% | TOP 1: ${top1.label} (${top1.distance.toFixed(3)}) | TOP 2: ${top2.label} (${top2.distance.toFixed(3)}) | MARGIN: ${margin.toFixed(3)}`);
-                                              const requiredMargin = top1.distance < 0.35 ? 0.02 : 0.04;
+                                              const requiredMargin = top1.distance < 0.30 ? 0.03 : 0.06;
                                               if (margin >= requiredMargin) {
                                                   currentLabel = top1.label;
                                               } else {
@@ -433,43 +433,47 @@ export default function FaceScanner() {
                                               }
                                           }
                                           
-                                          // Update the tracker's history!
-                                          if (currentTrackers[currentTId]) {
-                                              const t = currentTrackers[currentTId];
-                                              
-                                              // Clean Consensus
-                                              if (currentLabel !== 'unknown') {
-                                                  t.history.push(currentLabel);
-                                              } else {
-                                                  t.unknownCount = (t.unknownCount || 0) + 1;
-                                              }
-                                              if (t.history.length > 4) t.history.shift();
-                                              
-                                              if (t.unknownCount && t.unknownCount >= 6 && t.history.length < 2) {
-                                                  t.lockedIdentity = 'unknown';
-                                              }
-                                              
-                                              // Check Consensus
-                                              if (t.history.length === 4) {
-                                                  const counts: {[key: string]: number} = {};
-                                                  let maxCount = 0;
-                                                  let majorityLabel = 'unknown';
-                                                  t.history.forEach((label: string) => {
-                                                      counts[label] = (counts[label] || 0) + 1;
-                                                      if (counts[label] > maxCount) { maxCount = counts[label]; majorityLabel = label; }
-                                                  });
-                                                  if (maxCount >= 3) {
-                                                      t.lockedIdentity = majorityLabel;
-                                                      console.log(`[SCANNER] Track #${currentTId} LOCKED to ${majorityLabel}`);
-                                                  } else {
-                                                      t.history = [];
-                                                  }
-                                              }
-                                              
-                                              t.marginTooClose = marginTooClose;
-                                          }
-                                      } catch (err) {
-                                          console.error("[SCANNER ASYNC] Recognition error:", err);
+                                            // Update the tracker's history!
+                                            if (currentTrackers[currentTId]) {
+                                                const t = currentTrackers[currentTId];
+                                                
+                                                // Clean Consensus
+                                                if (currentLabel !== 'unknown') {
+                                                    t.history.push(currentLabel);
+                                                } else {
+                                                    t.unknownCount = (t.unknownCount || 0) + 1;
+                                                }
+                                                // Increase history buffer to 6 frames for stronger consensus
+                                                if (t.history.length > 6) t.history.shift();
+                                                
+                                                if (t.unknownCount && t.unknownCount >= 8 && t.history.length < 2) {
+                                                    t.lockedIdentity = 'unknown';
+                                                }
+                                                
+                                                // Check Consensus
+                                                if (t.history.length === 6) {
+                                                    const counts: {[key: string]: number} = {};
+                                                    let maxCount = 0;
+                                                    let majorityLabel = 'unknown';
+                                                    t.history.forEach((label: string) => {
+                                                        counts[label] = (counts[label] || 0) + 1;
+                                                        if (counts[label] > maxCount) {
+                                                            maxCount = counts[label];
+                                                            majorityLabel = label;
+                                                        }
+                                                    });
+                                                    // Require 5 out of 6 frames to agree
+                                                    if (maxCount >= 5) {
+                                                        t.lockedIdentity = majorityLabel;
+                                                        console.log(`[SCANNER] Track #${currentTId} LOCKED to ${majorityLabel}`);
+                                                    } else {
+                                                        t.lockedIdentity = 'unknown';
+                                                    }
+                                                }
+                                                t.marginTooClose = marginTooClose;
+                                            }
+                                        } catch (err) {
+                                            console.error("Async recognition error:", err);
                                       } finally {
                                           isRecognizingRef.current = false;
                                       }
