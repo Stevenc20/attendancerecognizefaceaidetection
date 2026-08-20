@@ -51,31 +51,10 @@ export interface FaceQuality {
     reasons: string[];  // what failed?
 }
 
-export const getFaceBrightness = (video: HTMLVideoElement, box: faceapi.IRect): number => {
-    try {
-        const canvas = document.createElement('canvas');
-        canvas.width = 32;
-        canvas.height = 32;
-        const ctx = canvas.getContext('2d', { willReadFrequently: true });
-        if (!ctx) return 128;
-        
-        ctx.drawImage(video, Math.max(0, box.x), Math.max(0, box.y), box.width, box.height, 0, 0, 32, 32);
-        const imageData = ctx.getImageData(0, 0, 32, 32).data;
-        let sum = 0;
-        for (let i = 0; i < imageData.length; i += 4) {
-            sum += (0.299 * imageData[i] + 0.587 * imageData[i+1] + 0.114 * imageData[i+2]);
-        }
-        return sum / 1024;
-    } catch(e) {
-        return 128;
-    }
-};
-
 // Assess the True Face Quality (not just detection confidence)
 export const assessFaceQuality = (
     detection: faceapi.WithFaceLandmarks<{ detection: faceapi.FaceDetection }, faceapi.FaceLandmarks68> | faceapi.WithFaceDescriptor<faceapi.WithFaceLandmarks<{ detection: faceapi.FaceDetection }, faceapi.FaceLandmarks68>>,
-    allowPose = false,
-    brightness: number | null = null
+    allowPose = false
 ): FaceQuality => {
     const box = detection.detection.box;
     const confidence = detection.detection.score;
@@ -85,22 +64,22 @@ export const assessFaceQuality = (
     let score = confidence;
     const reasons: string[] = [];
     
-    // We remove the strict `box.width < 90` rejection from here. We only flag it as a warning so the caller can decide.
-    // Wait, the user said don't break liveness. For P2, we will evaluate sizes in index.tsx.
-    if (box.width < 80 || box.height < 80) {
+    // 1. Minimum Size Check (at least 90px for reliable extraction)
+    if (box.width < 90 || box.height < 90) {
         score *= 0.5;
-        reasons.push("Wajah terlalu jauh");
+        reasons.push("Terlalu Jauh");
     }
     
-    // 2. Pose Alignment Check
+    // 2. Pose Alignment Check (frontal is best for enrollment/recognition baseline)
     if (!allowPose) {
-        if (Math.abs(yaw) > 25) {
+        if (Math.abs(yaw) > 20) {
             score *= 0.8;
-            reasons.push("Menoleh Terlalu Tajam");
+            reasons.push("Miring ke Samping (Yaw)");
         }
-        if (Math.abs(pitch) > 30) {
+        
+        if (Math.abs(pitch) > 25) {
             score *= 0.8;
-            reasons.push("Menunduk/Mendongak");
+            reasons.push("Menunduk/Mendongak (Pitch)");
         }
     }
     
@@ -111,24 +90,17 @@ export const assessFaceQuality = (
         reasons.push("Mata Tertutup/Berkedip");
     }
     
-    // 4. Brightness Check
-    if (brightness !== null) {
-        if (brightness < 40) {
-            score *= 0.7;
-            reasons.push("Wajah Terlalu Gelap");
-        } else if (brightness > 210) {
-            score *= 0.7;
-            reasons.push("Overexposure / Silau");
-        }
-    }
-    
-    // Basic detection score constraint
+    // Basic detection score constraint (minimum 85% confidence to even be considered clear)
     if (confidence < 0.85) {
-        reasons.push("Wajah Kurang Jelas");
+        reasons.push("Wajah Kurang Jelas (Buram/Gelap)");
     }
     
-    // Final quality gate
-    const isGood = score >= 0.75 && reasons.length === 0 && confidence >= 0.85;
+    // Final quality gate: must have high score and no violation reasons
+    const isGood = score >= 0.80 && reasons.length === 0 && confidence >= 0.85;
     
-    return { score, isGood, reasons };
+    return {
+        score,
+        isGood,
+        reasons
+    };
 };

@@ -2,7 +2,7 @@ import { Head, Link, router } from '@inertiajs/react';
 import * as faceapi from '@vladmandic/face-api';
 import { Camera, CheckCircle, Loader2, Maximize, AlertCircle, XCircle, Sun, Moon } from 'lucide-react';
 import React, { useEffect, useRef, useState } from 'react';
-import { assessFaceQuality, isEyeClosed, estimateEAR, getFaceBrightness, estimateYaw, estimatePitch } from '@/lib/liveness';
+import { estimateEAR, isEyeClosed, estimateYaw, assessFaceQuality } from '@/lib/liveness';
 import { attendance, embeddings } from '@/routes/admin/scanner';
 
 const LIVENESS_WINDOW_MS = 10000;
@@ -50,8 +50,6 @@ type TrackData = {
     lockedIdentity: string | null;
     lastSeen: number;
     box: faceapi.IRect;
-    unknownCount?: number;
-    marginTooClose?: boolean;
 };
 
 const computeIoU = (box1: faceapi.IRect, box2: faceapi.IRect) => {
@@ -88,7 +86,6 @@ export default function FaceScanner() {
 
     // Liveness and Logging Refs
     const alreadyPresentUsersRef = useRef<Set<number>>(new Set());
-    const attendancePendingRef = useRef<Set<number>>(new Set());
     const logsRef = useRef<LogEntry[]>([]);
     const detectLoopIdRef = useRef<number>(0);
     const lastBlinkRef = useRef<{ [key: number]: number }>({});
@@ -99,7 +96,6 @@ export default function FaceScanner() {
     const lastRecognizedRef = useRef<{ [key: number]: number }>({});
     const trackersRef = useRef<{ [trackId: number]: TrackData }>({});
     const nextTrackIdRef = useRef<number>(1);
-    const isRecognizingRef = useRef<boolean>(false);
     
     useEffect(() => {
         logsRef.current = logs;
@@ -110,7 +106,6 @@ export default function FaceScanner() {
         const timer = setInterval(() => setCurrentTime(new Date()), 1000);
         return () => clearInterval(timer);
     }, []);
-
 
     useEffect(() => {
         navigator.mediaDevices.enumerateDevices()
@@ -302,9 +297,10 @@ export default function FaceScanner() {
             }
 
             try {
-                // P1: DETECTION & TRACKING ONLY (Super fast, no descriptors computed synchronously)
+                // Use SsdMobilenetv1 for maximum accuracy and stable bounding boxes
                 const detections = await faceapi.detectAllFaces(video, new faceapi.SsdMobilenetv1Options({ minConfidence: 0.6 }))
-                    .withFaceLandmarks();
+                    .withFaceLandmarks()
+                    .withFaceDescriptors();
 
                 if (detectLoopIdRef.current !== currentLoopId) {
                     return;
@@ -317,15 +313,15 @@ export default function FaceScanner() {
                   const currentTrackers = trackersRef.current;
                   const now = Date.now();
                   
-                  // 1. Clean up old trackers (> 3 sec unseen) for Cooldown
+                  // 1. Clean up old trackers (> 1 sec unseen)
                   Object.keys(currentTrackers).forEach(id => {
-                      if (now - currentTrackers[Number(id)].lastSeen > 3000) {
+                      if (now - currentTrackers[Number(id)].lastSeen > 1000) {
                           delete currentTrackers[Number(id)];
                       }
                   });
 
                   // We will draw standard faceapi boxes instead of custom drawing
-                  resizedDetections.forEach((detection, index) => {
+                  resizedDetections.forEach(detection => {
                       const box = detection.detection.box;
 
                       // 2. Match detections to trackers by IoU
@@ -357,137 +353,116 @@ export default function FaceScanner() {
 
                       // Default drawing params
                       let drawColor = '#3B82F6'; // Blue for processing
-                      let labelText = 'Menganalisis wajah...';
+                      let labelText = 'Processing...';
                       let isLive = false;
                       let user: any = null;
                       let distance = 0;
-                      
-                      // 1. P2 FACE QUALITY GATE (Includes size, pose, brightness)
-                      const brightness = getFaceBrightness(video, box);
-                      const quality = assessFaceQuality(detection, false, brightness); 
-                      
-                      // Debug Output for Calibration
-                      console.log(`[P2 QUALITY] Track #${bestTrackerId} | Resol: ${video.videoWidth}x${video.videoHeight} | Size: ${Math.round(box.width)}x${Math.round(box.height)} | Brightness: ${Math.round(brightness)} | Quality: ${quality.score.toFixed(2)} | Pose: Y${Math.round(estimateYaw(detection.landmarks))} P${Math.round(estimatePitch(detection.landmarks))} | Decision: ${quality.isGood ? 'RECOGNIZE' : 'SKIP'}`);
-
+                      // 1. TRUE FACE QUALITY GATE
+                      const quality = assessFaceQuality(detection, false); // For scanner, strict pose helps accuracy
+  
                       if (!quality.isGood) {
-                          // Cyan for distance, Amber for blurry/pose/brightness
-                          if (box.width < 80) {
-                              drawColor = '#06B6D4'; // Cyan
-                              labelText = 'Terlalu Jauh';
-                          } else {
-                              drawColor = '#F59E0B'; // Amber
-                              labelText = quality.reasons[0] || 'Wajah Kurang Jelas';
-                          }
+                          // Cyan for distance, Amber for blurry/pose
+                          drawColor = detection.detection.box.width < 90 ? '#06B6D4' : '#F59E0B';
+                          labelText = quality.reasons[0] || 'Wajah Kurang Jelas';
                       } else {
                           // If not locked, or locked as unknown, evaluate current frame
-                          if (!tracker.lockedIdentity || tracker.lockedIdentity === 'unknown') {
+                          if ((!tracker.lockedIdentity || tracker.lockedIdentity === 'unknown') && faceMatcher) {
+                              // Top-1 vs Top-2 Margin Protection
+                              let top1 = { label: 'unknown', distance: 1.0 };
+                              let top2 = { label: 'unknown', distance: 1.0 };
                               
-                              // Trigger async recognition if worker is free! (Best Frame & Early Exit)
-                              if (!isRecognizingRef.current && faceMatcher && bestTrackerId !== null) {
-                                  isRecognizingRef.current = true;
-                                  const currentTId = bestTrackerId;
+                              faceMatcher.labeledDescriptors.forEach((ld: any) => {
+                                  let minDistance = 1.0;
+                                  ld.descriptors.forEach((desc: Float32Array) => {
+                                      const dist = faceapi.euclideanDistance(detection.descriptor, desc);
+                                      if (dist < minDistance) minDistance = dist;
+                                  });
                                   
-                                  // Capture exactly this frame to guarantee identical preprocessing
-                                  const frameCanvas = document.createElement('canvas');
-                                  frameCanvas.width = video.videoWidth;
-                                  frameCanvas.height = video.videoHeight;
-                                  frameCanvas.getContext('2d')?.drawImage(video, 0, 0, frameCanvas.width, frameCanvas.height);
-                                  
-                                  const originalDetection = detections[index];
-                                  
-                                  // Async IIFE (Fire and Forget)
-                                  (async () => {
-                                      try {
-                                          const descriptor = await faceapi.computeFaceDescriptor(frameCanvas, originalDetection);
-                                          
-                                          // TOP-1 / TOP-2 LOGIC
-                                          let top1 = { label: 'unknown', distance: 1.0 };
-                                          let top2 = { label: 'unknown', distance: 1.0 };
-                                          
-                                          faceMatcher.labeledDescriptors.forEach((ld: any) => {
-                                              let minDistance = 1.0;
-                                              ld.descriptors.forEach((desc: Float32Array) => {
-                                                  const dist = faceapi.euclideanDistance(descriptor, desc);
-                                                  if (dist < minDistance) minDistance = dist;
-                                              });
-                                              if (minDistance < top1.distance) {
-                                                  top2 = { ...top1 };
-                                                  top1 = { label: ld.label, distance: minDistance };
-                                              } else if (minDistance < top2.distance) {
-                                                  top2 = { label: ld.label, distance: minDistance };
-                                              }
-                                          });
+                                  if (minDistance < top1.distance) {
+                                      top2 = { ...top1 };
+                                      top1 = { label: ld.label, distance: minDistance };
+                                  } else if (minDistance < top2.distance) {
+                                      top2 = { label: ld.label, distance: minDistance };
+                                  }
+                              });
 
-                                          let currentLabel = 'unknown';
-                                          let marginTooClose = false;
-                                          
-                                          if (top1.label !== 'unknown' && top1.distance < 0.40) {
-                                              const margin = top2.distance - top1.distance;
-                                              console.log(`[SCANNER DEBUG] Track #${currentTId} | Quality: ${(quality.score * 100).toFixed(1)}% | TOP 1: ${top1.label} (${top1.distance.toFixed(3)}) | TOP 2: ${top2.label} (${top2.distance.toFixed(3)}) | MARGIN: ${margin.toFixed(3)}`);
-                                              const requiredMargin = top1.distance < 0.35 ? 0.02 : 0.04;
-                                              if (margin >= requiredMargin) {
-                                                  currentLabel = top1.label;
-                                              } else {
-                                                  marginTooClose = true;
-                                                  console.warn(`[SCANNER WARNING] Track #${currentTId} Margin too close (${margin.toFixed(3)} < ${requiredMargin})! Ambiguous match.`);
-                                              }
-                                          }
-                                          
-                                            // Update the tracker's history!
-                                            if (currentTrackers[currentTId]) {
-                                                const t = currentTrackers[currentTId];
-                                                
-                                                // Clean Consensus
-                                                if (currentLabel !== 'unknown') {
-                                                    t.history.push(currentLabel);
-                                                } else {
-                                                    t.unknownCount = (t.unknownCount || 0) + 1;
-                                                }
-                                                // Increase history buffer to 6 frames for stronger consensus
-                                                if (t.history.length > 6) t.history.shift();
-                                                
-                                                if (t.unknownCount && t.unknownCount >= 8 && t.history.length < 2) {
-                                                    t.lockedIdentity = 'unknown';
-                                                }
-                                                
-                                                // Check Consensus
-                                                if (t.history.length === 6) {
-                                                    const counts: {[key: string]: number} = {};
-                                                    let maxCount = 0;
-                                                    let majorityLabel = 'unknown';
-                                                    t.history.forEach((label: string) => {
-                                                        counts[label] = (counts[label] || 0) + 1;
-                                                        if (counts[label] > maxCount) {
-                                                            maxCount = counts[label];
-                                                            majorityLabel = label;
-                                                        }
-                                                    });
-                                                    // Require 5 out of 6 frames to agree
-                                                    if (maxCount >= 5) {
-                                                        t.lockedIdentity = majorityLabel;
-                                                        console.log(`[SCANNER] Track #${currentTId} LOCKED to ${majorityLabel}`);
-                                                    } else {
-                                                        t.lockedIdentity = 'unknown';
-                                                    }
-                                                }
-                                                t.marginTooClose = marginTooClose;
-                                            }
-                                        } catch (err) {
-                                            console.error("Async recognition error:", err);
-                                      } finally {
-                                          isRecognizingRef.current = false;
+                              let currentLabel = 'unknown';
+                              let marginTooClose = false;
+                              
+                              // Check threshold and margin
+                              if (top1.label !== 'unknown' && top1.distance < 0.40) {
+                                  const margin = top2.distance - top1.distance;
+                                  
+                                  // Log detailed debug info to console for the user to audit
+                                  console.log(`[SCANNER DEBUG] Track #${bestTrackerId} | Detection: ${(detection.detection.score * 100).toFixed(1)}% | TOP 1: ${top1.label} (${top1.distance.toFixed(3)}) | TOP 2: ${top2.label} (${top2.distance.toFixed(3)}) | MARGIN: ${margin.toFixed(3)}`);
+                                  
+                                  // Dynamic margin: If it's a very strong match (< 0.35), we don't need a huge margin difference.
+                                  const requiredMargin = top1.distance < 0.35 ? 0.02 : 0.04;
+                                  
+                                  if (margin >= requiredMargin) {
+                                      currentLabel = top1.label;
+                                  } else {
+                                      marginTooClose = true;
+                                      console.warn(`[SCANNER WARNING] Track #${bestTrackerId} Margin too close (${margin.toFixed(3)} < ${requiredMargin})! Rejecting ${top1.label}`);
+                                  }
+                              }
+                              
+                              // Clean Consensus: Only push valid labels. Track unknowns separately.
+                              if (currentLabel !== 'unknown') {
+                                  tracker.history.push(currentLabel);
+                              } else {
+                                  tracker.unknownCount = (tracker.unknownCount || 0) + 1;
+                              }
+                              
+                              if (tracker.history.length > 4) {
+                                  tracker.history.shift();
+                              }
+                              
+                              // Lock as UNKNOWN if we see it consistently and no valid identity is building up
+                              if (tracker.unknownCount >= 6 && tracker.history.length < 2) {
+                                  tracker.lockedIdentity = 'unknown';
+                              }
+                              
+                              // Check consensus if we have 4 VALID frames
+                              if (tracker.history.length === 4) {
+                                  const counts: {[key: string]: number} = {};
+                                  let maxCount = 0;
+                                  let majorityLabel = 'unknown';
+                                  tracker.history.forEach(label => {
+                                      counts[label] = (counts[label] || 0) + 1;
+                                      if (counts[label] > maxCount) {
+                                          maxCount = counts[label];
+                                          majorityLabel = label;
                                       }
-                                  })();
+                                  });
+                                  
+                                  // Lock if majority is >= 3 (out of 4 valid frames)
+                                  if (maxCount >= 3) {
+                                      tracker.lockedIdentity = majorityLabel;
+                                      console.log(`[SCANNER] Track #${bestTrackerId} LOCKED to ${majorityLabel}`);
+                                  } else {
+                                      // Conflicting valid labels (e.g. 2 Aisyah, 2 Steven) -> reset to prevent false lock
+                                      tracker.history = [];
+                                  }
                               }
 
                               // Visual feedback for margin issue while processing
-                              if (tracker.marginTooClose) {
+                              if (marginTooClose && (!tracker.lockedIdentity || tracker.lockedIdentity === 'unknown')) {
                                   drawColor = '#F97316'; // Orange
-                                  labelText = 'Menganalisa...';
+                                  labelText = 'Mirip Dua Orang (Maju Sedikit)';
                               }
                           } else if (tracker.lockedIdentity && tracker.lockedIdentity !== 'unknown') {
                               // IDENTITY VERIFICATION PASCA-LOCK (Prevent Track Hijacking)
-                              // Skipped in P1 to save resources, relying entirely on IoU Tracker
+                              if (faceMatcher) {
+                                  const bestMatch = faceMatcher.findBestMatch(detection.descriptor);
+                                  // Jika wajah tiba-tiba sangat mirip orang lain (bukan identity yang dilock)
+                                  if (bestMatch.label !== tracker.lockedIdentity && bestMatch.distance < 0.38) {
+                                      console.warn(`[SCANNER ALERT] Track #${bestTrackerId} Identity Hijack Detected! Was ${tracker.lockedIdentity}, now looks like ${bestMatch.label}. Re-evaluating...`);
+                                      tracker.lockedIdentity = null;
+                                      tracker.history = [];
+                                      tracker.unknownCount = 0;
+                                  }
+                              }
                           }
                           
                           if (tracker.lockedIdentity === 'unknown') {
@@ -531,14 +506,9 @@ export default function FaceScanner() {
 
                             // Display Logic Priority
                             if (alreadyPresentUsersRef.current.has(user.id)) {
-                                // Already recorded today -> immediately show Green and prevent processAttendance
-                                drawColor = '#10B981'; // Green
-                                labelText = `${firstName} (Sudah Absen)`;
-                                isLive = false; 
-                            } else if (attendancePendingRef.current.has(user.id)) {
-                                drawColor = '#F59E0B'; // Amber
-                                labelText = `${firstName} (Memproses...)`;
-                                isLive = false;
+                                // Already recorded today -> immediately show Yellow (no need to prove liveness again)
+                                drawColor = '#FBBF24'; // Yellow
+                                labelText = `${firstName} (Recorded)`;
                             } else {
                                 // Passed liveness
                                 const nowTime = new Date();
@@ -594,10 +564,6 @@ export default function FaceScanner() {
     const processAttendance = (user: FaceEmbedding['user'], distance: number) => {
         const now = Date.now();
 
-        // 1. GLOBAL STATE MACHINE CHECKS
-        if (alreadyPresentUsersRef.current.has(user.id)) return;
-        if (attendancePendingRef.current.has(user.id)) return;
-
         // Liveness gate: never record for a face that has not moved recently
         const history = yawHistoryRef.current[user.id] || [];
         const yawRange = history.length > 5 ? Math.max(...history) - Math.min(...history) : 0;
@@ -615,26 +581,50 @@ export default function FaceScanner() {
         }
 
         lastRecognizedRef.current[user.id] = now;
-        
-        // 2. MARK AS PENDING
-        attendancePendingRef.current.add(user.id);
 
-        // Optimistic log (Pending)
+        if (alreadyPresentUsersRef.current.has(user.id)) {
+            const existing = logsRef.current.find(l => l.user.id === user.id && l.status !== 'error');
+
+            if (existing) {
+                setLogs(prev => prev.map(l => l.id === existing.id ? { ...l, count: l.count + 1, status: 'already', message: 'Already Present' } : l));
+            } else {
+                const time = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+                const alreadyLog: LogEntry = {
+                    id: Math.random().toString(36).substring(7),
+                    time,
+                    user,
+                    status: 'already',
+                    message: 'Already Present',
+                    count: 1
+                };
+
+                setLogs(prev => [alreadyLog, ...prev].slice(0, 8));
+            }
+
+            return;
+        }
+
+        // Play sound
+        const audio = new Audio('/sounds/ding.mp3'); // We'll assume a sound file exists or just let it fail silently
+        audio.play().catch(e => {});
+
+        // Add optimistic log
         const logId = Math.random().toString(36).substring(7);
         const time = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
         const nowTime = new Date();
         const isLate = nowTime.getHours() > 6 || (nowTime.getHours() === 6 && nowTime.getMinutes() >= 20);
         
-        const pendingLog: LogEntry = {
+        const newLog: LogEntry = {
             id: logId,
             time,
             user,
-            status: isLate ? 'late' : 'success', // Show optimistic status
-            message: 'Memproses...',
+            status: isLate ? 'late' : 'success',
+            message: isLate ? 'Late' : 'Recorded',
             count: 1
         };
 
-        setLogs(prev => [pendingLog, ...prev].slice(0, 8));
+        setLogs(prev => [newLog, ...prev].slice(0, 8)); // Keep last 8
 
         // Send to backend
         fetch(attendance.url(), {
@@ -652,31 +642,24 @@ export default function FaceScanner() {
         .then(async res => {
             if (!res.ok) {
                 const detail = await res.text().catch(() => '');
+
                 throw new Error(`Attendance request failed with HTTP ${res.status}. ${detail.slice(0, 120)}`);
             }
+
             return (await parseJsonResponse(res)) as { message?: string };
         })
-        .then(data => {
-            // 3. DATABASE IS SOURCE OF TRUTH
-            if (data.message === 'Attendance already recorded for today') {
-                alreadyPresentUsersRef.current.add(user.id);
-                setLogs(prev => prev.map(l => l.id === logId ? { ...l, status: 'already', message: 'Sudah Absen' } : l));
-            } else {
-                alreadyPresentUsersRef.current.add(user.id);
-                setLogs(prev => prev.map(l => l.id === logId ? { ...l, message: isLate ? 'Terlambat' : 'Berhasil' } : l));
-                
-                // Play sound ONLY on fresh success
-                const audio = new Audio('/sounds/ding.mp3'); 
-                audio.play().catch(e => {});
-            }
-        })
+          .then(data => {
+              if (data.message === 'Attendance already recorded for today') {
+                  alreadyPresentUsersRef.current.add(user.id);
+                  setLogs(prev => prev.map(l => l.id === logId ? { ...l, status: 'already', message: 'Already Present' } : l));
+              } else {
+                  // If successful, also mark as present for future frames
+                  alreadyPresentUsersRef.current.add(user.id);
+              }
+          })
         .catch(err => {
             console.error("Failed to record", err);
-            setLogs(prev => prev.map(l => l.id === logId ? { ...l, status: 'error', message: 'Gagal Jaringan' } : l));
-        })
-        .finally(() => {
-            // Free the lock so it can be retried if it failed
-            attendancePendingRef.current.delete(user.id);
+            setLogs(prev => prev.map(l => l.id === logId ? { ...l, status: 'error', message: 'Network Error' } : l));
         });
     };
 
