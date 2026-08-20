@@ -31,11 +31,16 @@ class ScannerController extends Controller
     public function recordAttendance(Request $request)
     {
         $request->validate([
-            'user_id' => 'required|exists:users,id',
+            'user_id' => 'required_without:qr_token|exists:users,id',
+            'qr_token' => 'required_without:user_id|exists:users,qr_token',
             'method' => 'required|string',
         ]);
 
         $userId = $request->user_id;
+        if ($request->qr_token) {
+            $user = \App\Models\User::where('qr_token', $request->qr_token)->firstOrFail();
+            $userId = $user->id;
+        }
         $today = Carbon::today()->format('Y-m-d');
         $now = Carbon::now();
         $timeIn = $now->format('H:i:s');

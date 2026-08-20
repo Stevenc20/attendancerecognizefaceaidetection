@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { Head, useForm, usePage, Link } from '@inertiajs/react';
+import { Head, useForm, usePage, Link, router } from '@inertiajs/react';
 import DashboardLayout from '@/layouts/dashboard-layout';
-import { Plus, X, Trash2, Edit2, GraduationCap, CheckCircle2, Camera } from 'lucide-react';
+import { Plus, X, Trash2, Edit2, GraduationCap, CheckCircle2, Camera, CreditCard } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import StudentIdCard from '@/components/StudentIdCard';
 
 interface Classroom {
     id: number;
@@ -40,6 +41,7 @@ export default function StudentsManagement({ students, classrooms, filters }: St
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingStudent, setEditingStudent] = useState<StudentUser | null>(null);
     const [confirmAction, setConfirmAction] = useState<{type: 'delete', student: StudentUser} | null>(null);
+    const [printingStudent, setPrintingStudent] = useState<StudentUser | null>(null);
 
     const [search, setSearch] = useState(filters?.search || '');
     const [classroomId, setClassroomId] = useState(filters?.classroom_id || 'all');
@@ -246,6 +248,13 @@ export default function StudentsManagement({ students, classrooms, filters }: St
                                                 <Camera size={16} />
                                             </Link>
                                             <button 
+                                                onClick={() => setPrintingStudent(student)}
+                                                className="p-1.5 text-gray-400 hover:text-amber-600 hover:bg-amber-50 rounded-md transition-colors"
+                                                title="Print ID Card"
+                                            >
+                                                <CreditCard size={16} />
+                                            </button>
+                                            <button 
                                                 onClick={() => openEdit(student)}
                                                 className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-colors"
                                             >
@@ -426,7 +435,13 @@ export default function StudentsManagement({ students, classrooms, filters }: St
                             <button onClick={executeConfirmAction} disabled={processing} className="px-5 py-2.5 text-[13px] font-bold rounded-xl w-full" style={{ backgroundColor: '#D40000', color: 'white' }}>Delete</button>
                         </div>
                     </div>
-                </div>
+            )}
+
+            {printingStudent && (
+                <StudentIdCard 
+                    student={printingStudent} 
+                    onClose={() => setPrintingStudent(null)} 
+                />
             )}
         </DashboardLayout>
     );
