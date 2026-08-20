@@ -111,69 +111,6 @@ export default function FaceScanner() {
         return () => clearInterval(timer);
     }, []);
 
-    // QR Code Scanner Event Listener
-    const qrBufferRef = useRef<string>('');
-    useEffect(() => {
-        const handleKeyDown = (e: KeyboardEvent) => {
-            if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
-
-            if (e.key === 'Enter') {
-                if (qrBufferRef.current.length > 5) {
-                    processQRAttendance(qrBufferRef.current);
-                }
-                qrBufferRef.current = '';
-            } else if (e.key.length === 1) {
-                qrBufferRef.current += e.key;
-            }
-        };
-
-        window.addEventListener('keydown', handleKeyDown);
-        return () => window.removeEventListener('keydown', handleKeyDown);
-    }, []);
-
-    const processQRAttendance = (qrToken: string) => {
-        fetch(attendance.url(), {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Accept': 'application/json',
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
-            },
-            body: JSON.stringify({
-                qr_token: qrToken,
-                method: 'QR'
-            })
-        })
-        .then(res => res.json())
-        .then((data: any) => {
-            if (data.message === 'Attendance recorded successfully' || data.message === 'Attendance already recorded for today') {
-                const user = data.attendance?.user;
-                if (user) {
-                    alreadyPresentUsersRef.current.add(user.id);
-                    
-                    // Simple TTS for QR only
-                    const firstName = user.name.split(' ')[0];
-                    const utterance = new SpeechSynthesisUtterance(`${firstName} berhasil absen`);
-                    utterance.lang = 'id-ID';
-                    window.speechSynthesis.speak(utterance);
-                    
-                    const time = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-                    setLogs(prev => [{
-                        id: Math.random().toString(36).substring(7),
-                        time,
-                        user,
-                        status: data.message.includes('already') ? 'already' : 'success',
-                        message: 'QR Scan',
-                        count: 1
-                    }, ...prev].slice(0, 8));
-                }
-            } else {
-                 addLog('QR Code tidak valid atau kadaluarsa', 'error', { id: 0, name: 'Unknown', email: '', email_verified_at: null, created_at: '', updated_at: '' });
-            }
-        }).catch(err => {
-            console.error("QR Fetch Error:", err);
-        });
-    };
 
     useEffect(() => {
         navigator.mediaDevices.enumerateDevices()

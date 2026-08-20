@@ -4,7 +4,7 @@ import {
     LayoutGrid, Building2, Calendar, Users, Settings, 
     GraduationCap, UserCog, ClipboardList, ShieldAlert, BarChart3, 
     BookOpen, History, User, Smartphone, LogOut, Menu, X, ChevronRight,
-    PanelLeftClose, PanelLeft, UploadCloud
+    PanelLeftClose, PanelLeft, UploadCloud, Camera, ScanLine
 } from 'lucide-react';
 
 interface DashboardLayoutProps {
@@ -39,6 +39,8 @@ const getNavItems = (role: string) => {
                 { name: 'Dashboard', icon: LayoutGrid, href: dashboardUrl },
                 { name: 'Student Management', icon: GraduationCap, href: '/admin/students' },
                 { name: 'Teacher Management', icon: UserCog, href: '/admin/teachers' },
+                { name: 'Live Scanner', icon: Camera, href: '/admin/scanner' },
+                { name: 'QR Scanner', icon: ScanLine, href: '/admin/qr-scanner' },
                 { name: 'Data Import', icon: UploadCloud, href: '/admin/import' },
                 { name: 'Attendance Sessions', icon: ClipboardList, href: '/admin/sessions' },
                 { name: 'Security Alerts', icon: ShieldAlert, href: '/admin/alerts' },
