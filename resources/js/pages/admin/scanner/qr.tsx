@@ -31,15 +31,16 @@ export default function QRScannerPage() {
         return () => clearInterval(timer);
     }, []);
 
-    // Auto-focus the input field so it's always ready for the physical scanner
+    const [isFocused, setIsFocused] = useState(true);
+
+    // Keep focus on the hidden input automatically
     useEffect(() => {
-        const focusInput = () => {
-            if (inputRef.current && document.activeElement !== inputRef.current) {
-                inputRef.current.focus();
+        const interval = setInterval(() => {
+            if (document.activeElement !== inputRef.current) {
+                inputRef.current?.focus();
+                setIsFocused(true);
             }
-        };
-        focusInput();
-        const interval = setInterval(focusInput, 2000);
+        }, 1000);
         return () => clearInterval(interval);
     }, []);
 
@@ -138,6 +139,8 @@ export default function QRScannerPage() {
                         type="password" 
                         value={inputValue}
                         onChange={(e) => setInputValue(e.target.value)}
+                        onFocus={() => setIsFocused(true)}
+                        onBlur={() => setIsFocused(false)}
                         className="opacity-0 absolute h-0 w-0"
                         autoFocus
                     />
@@ -151,10 +154,17 @@ export default function QRScannerPage() {
                         <h2 className="text-2xl font-bold text-gray-900 mb-2">SIAP MENERIMA SCAN QR</h2>
                         <p className="text-gray-500 font-medium mb-6">Langsung tembak Kartu Pelajar pakai alat scanner.</p>
                         
-                        <div className="inline-flex items-center gap-2 bg-blue-50 px-4 py-2 rounded-full border border-blue-100">
-                            <span className="w-2.5 h-2.5 rounded-full bg-blue-500 animate-pulse relative"></span>
-                            <span className="text-sm font-bold text-blue-700">Sistem Aktif & Menunggu Scan Kartu Pelajar...</span>
-                        </div>
+                        {isFocused ? (
+                            <div className="inline-flex items-center gap-2 bg-blue-50 px-4 py-2 rounded-full border border-blue-100">
+                                <span className="w-2.5 h-2.5 rounded-full bg-blue-500 animate-pulse relative"></span>
+                                <span className="text-sm font-bold text-blue-700">Sistem Aktif & Menunggu Scan Kartu Pelajar...</span>
+                            </div>
+                        ) : (
+                            <div className="inline-flex items-center gap-2 bg-red-50 px-4 py-2 rounded-full border border-red-100 cursor-pointer" onClick={() => inputRef.current?.focus()}>
+                                <span className="w-2.5 h-2.5 rounded-full bg-red-500 relative"></span>
+                                <span className="text-sm font-bold text-red-700">Sistem Terhenti (Klik di Sini)</span>
+                            </div>
+                        )}
                     </div>
                 ) : (
                     <div className={`bg-white rounded-3xl p-10 shadow-lg border-t-8 flex flex-col items-center max-w-lg w-full text-center animate-in zoom-in duration-300 ${lastScan.status === 'success' ? 'border-emerald-500' : lastScan.status === 'already' ? 'border-amber-500' : 'border-red-500'}`}>
