@@ -23,7 +23,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        Vite::prefetch(concurrency: 3);
+        \Illuminate\Support\Facades\Vite::prefetch(concurrency: 3);
         
         // FORCING THE ROUTE REGISTRATION HERE TO BYPASS ANY DOCKER VOLUME/CACHE ISSUES
         \Illuminate\Support\Facades\Route::middleware(['web', 'auth', 'role:admin,super_admin'])
