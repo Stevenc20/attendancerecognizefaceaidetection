@@ -71,18 +71,18 @@ export default function QRScannerPage() {
     const speak = (text: string) => {
         if (!('speechSynthesis' in window)) return;
 
-        window.speechSynthesis.cancel();
-        const voices = window.speechSynthesis.getVoices();
-        const voice = voices.find(v => v.lang === 'id-ID') || voices.find(v => v.lang.startsWith('id'));
+        const synth = window.speechSynthesis;
+        synth.cancel();
 
         const utterance = new SpeechSynthesisUtterance(text);
         utterance.lang = 'id-ID';
-        utterance.voice = voice || null;
         utterance.rate = 0.85;
         utterance.pitch = 1;
         utterance.volume = 1;
 
-        window.speechSynthesis.speak(utterance);
+        setTimeout(() => {
+            synth.speak(utterance);
+        }, 100);
     };
 
     const processQRAttendance = (qrToken: string) => {
@@ -112,6 +112,8 @@ export default function QRScannerPage() {
                     // Improved Indonesian TTS
                     if (!isAlready) {
                         speak(`${firstName} berhasil absen`);
+                    } else {
+                        speak(`${firstName} sudah absen hari ini`);
                     }
                     
                     setLogs(prev => {
