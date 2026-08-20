@@ -142,12 +142,20 @@ export default function QRScannerPage() {
         });
     };
 
+    const unlockAudio = () => {
+        inputRef.current?.focus();
+        // Play silent utterance to unlock SpeechSynthesis on mobile/Chrome
+        const u = new SpeechSynthesisUtterance('');
+        u.volume = 0;
+        window.speechSynthesis.speak(u);
+    };
+
     return (
         <div className="min-h-screen bg-gray-50 flex">
             <Head title="QR Scanner — SMKN 40" />
             
             {/* Left Side: Status / Scanner */}
-            <div className="flex-1 flex flex-col p-8 items-center justify-center relative" onClick={() => inputRef.current?.focus()}>
+            <div className="flex-1 flex flex-col p-8 items-center justify-center relative" onClick={unlockAudio}>
                 <Link href="/admin/dashboard" className="absolute top-8 left-8 text-gray-500 hover:text-gray-900 font-medium">
                     &larr; Back to Dashboard
                 </Link>
@@ -193,7 +201,7 @@ export default function QRScannerPage() {
                                 <span className="text-sm font-bold text-blue-700">Sistem Aktif & Menunggu Scan Kartu Pelajar...</span>
                             </div>
                         ) : (
-                            <div className="inline-flex items-center gap-2 bg-red-50 px-4 py-2 rounded-full border border-red-100 cursor-pointer" onClick={() => inputRef.current?.focus()}>
+                            <div className="inline-flex items-center gap-2 bg-red-50 px-4 py-2 rounded-full border border-red-100 cursor-pointer" onClick={unlockAudio}>
                                 <span className="w-2.5 h-2.5 rounded-full bg-red-500 relative"></span>
                                 <span className="text-sm font-bold text-red-700">Sistem Terhenti (Klik di Sini)</span>
                             </div>
