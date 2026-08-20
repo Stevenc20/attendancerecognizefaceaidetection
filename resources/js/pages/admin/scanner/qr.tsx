@@ -68,6 +68,23 @@ export default function QRScannerPage() {
         setInputValue('');
     };
 
+    const speak = (text: string) => {
+        if (!('speechSynthesis' in window)) return;
+
+        window.speechSynthesis.cancel();
+        const voices = window.speechSynthesis.getVoices();
+        const voice = voices.find(v => v.lang === 'id-ID') || voices.find(v => v.lang.startsWith('id'));
+
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.lang = 'id-ID';
+        utterance.voice = voice || null;
+        utterance.rate = 0.85;
+        utterance.pitch = 1;
+        utterance.volume = 1;
+
+        window.speechSynthesis.speak(utterance);
+    };
+
     const processQRAttendance = (qrToken: string) => {
         if (processingRef.current) return;
         processingRef.current = true;
@@ -94,11 +111,7 @@ export default function QRScannerPage() {
                     
                     // Improved Indonesian TTS
                     if (!isAlready) {
-                        window.speechSynthesis.cancel(); // Clear any stuck queues
-                        const utterance = new SpeechSynthesisUtterance(`${firstName} berhasil absen`);
-                        utterance.lang = 'id-ID';
-                        utterance.rate = 0.9;
-                        window.speechSynthesis.speak(utterance);
+                        speak(`${firstName} berhasil absen`);
                     }
                     
                     setLogs(prev => {
@@ -142,11 +155,7 @@ export default function QRScannerPage() {
 
     const unlockAudio = () => {
         inputRef.current?.focus();
-        // Play silent utterance to unlock SpeechSynthesis on mobile/Chrome
-        window.speechSynthesis.cancel();
-        const u = new SpeechSynthesisUtterance('');
-        u.volume = 0;
-        window.speechSynthesis.speak(u);
+        speak(''); // Play silent utterance to unlock SpeechSynthesis on mobile/Chrome
     };
 
     return (
