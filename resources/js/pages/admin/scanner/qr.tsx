@@ -97,9 +97,6 @@ export default function QRScannerPage() {
                         const utterance = new SpeechSynthesisUtterance(`${firstName} berhasil absen`);
                         utterance.lang = 'id-ID';
                         utterance.rate = 0.9;
-                        const voices = window.speechSynthesis.getVoices();
-                        const idVoice = voices.find(v => v.lang.includes('id') || v.lang.includes('ID') || v.name.includes('Indonesia'));
-                        if (idVoice) utterance.voice = idVoice;
                         window.speechSynthesis.speak(utterance);
                     }
                     
