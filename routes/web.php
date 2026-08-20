@@ -123,9 +123,7 @@ Route::middleware(['auth', 'verified', \App\Http\Middleware\CheckActivation::cla
         Route::post('/admin/scanner/attendance', [\App\Http\Controllers\Admin\ScannerController::class, 'recordAttendance'])->name('admin.scanner.attendance');
 
         // Dedicated QR Scanner
-        Route::get('/admin/qr-scanner', function () {
-            return \Inertia\Inertia::render('admin/scanner/qr');
-        })->name('admin.scanner.qr');
+        Route::get('/admin/qr-scanner', [\App\Http\Controllers\Admin\ScannerController::class, 'qr'])->name('admin.scanner.qr');
 
         // Teacher Management
         Route::get('/admin/teachers', [\App\Http\Controllers\Admin\TeacherController::class, 'index'])->name('admin.teachers');

@@ -15,6 +15,11 @@ class ScannerController extends Controller
         return inertia('admin/scanner/index');
     }
 
+    public function qr()
+    {
+        return inertia('admin/scanner/qr');
+    }
+
     public function fetchEmbeddings()
     {
         $embeddings = FaceEmbedding::with(['user' => function ($query) {
