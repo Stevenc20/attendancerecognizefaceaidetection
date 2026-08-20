@@ -111,6 +111,7 @@ export default function FaceScanner() {
         return () => clearInterval(timer);
     }, []);
 
+
     useEffect(() => {
         navigator.mediaDevices.enumerateDevices()
             .then(devices => {
