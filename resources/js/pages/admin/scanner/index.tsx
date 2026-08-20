@@ -424,7 +424,13 @@ export default function FaceScanner() {
                                           if (top1.label !== 'unknown' && top1.distance < 0.40) {
                                               const margin = top2.distance - top1.distance;
                                               console.log(`[SCANNER DEBUG] Track #${currentTId} | Quality: ${(quality.score * 100).toFixed(1)}% | TOP 1: ${top1.label} (${top1.distance.toFixed(3)}) | TOP 2: ${top2.label} (${top2.distance.toFixed(3)}) | MARGIN: ${margin.toFixed(3)}`);
-                                              currentLabel = top1.label;
+                                              const requiredMargin = top1.distance < 0.35 ? 0.02 : 0.04;
+                                              if (margin >= requiredMargin) {
+                                                  currentLabel = top1.label;
+                                              } else {
+                                                  marginTooClose = true;
+                                                  console.warn(`[SCANNER WARNING] Track #${currentTId} Margin too close (${margin.toFixed(3)} < ${requiredMargin})! Ambiguous match.`);
+                                              }
                                           }
                                           
                                             // Update the tracker's history!
@@ -477,7 +483,7 @@ export default function FaceScanner() {
                               // Visual feedback for margin issue while processing
                               if (tracker.marginTooClose) {
                                   drawColor = '#F97316'; // Orange
-                                  labelText = 'Wajah Terlalu Mirip';
+                                  labelText = 'Menganalisa...';
                               }
                           } else if (tracker.lockedIdentity && tracker.lockedIdentity !== 'unknown') {
                               // IDENTITY VERIFICATION PASCA-LOCK (Prevent Track Hijacking)
