@@ -1,6 +1,6 @@
 import { Head, usePage } from '@inertiajs/react';
 import DashboardLayout from '@/layouts/dashboard-layout';
-import { ArrowUpRight, Camera, Smartphone } from 'lucide-react';
+import { ArrowUpRight, Camera, Smartphone, ScanLine } from 'lucide-react';
 
 export default function AdminDashboard({ metrics, recentActivity }: { metrics: any[], recentActivity: any[] }) {
     const { auth } = usePage().props as any;
@@ -33,9 +33,9 @@ export default function AdminDashboard({ metrics, recentActivity }: { metrics: a
                         {greeting}, {user.name}.
                     </h1>
                 </div>
-                <a href="/admin/scanner" className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-[#D40000] hover:bg-red-700 text-white font-bold rounded-xl transition-all shadow-[0_4px_14px_rgba(212,0,0,0.4)] hover:-translate-y-0.5 hover:shadow-[0_6px_20px_rgba(212,0,0,0.6)]">
-                    <Camera size={18} />
-                    Launch Face Scanner
+                <a href="/admin/qr-scanner" className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-[#D40000] hover:bg-red-700 text-white font-bold rounded-xl transition-all shadow-[0_4px_14px_rgba(212,0,0,0.4)] hover:-translate-y-0.5 hover:shadow-[0_6px_20px_rgba(212,0,0,0.6)]">
+                    <ScanLine size={20} />
+                    Launch QR Scanner
                 </a>
             </header>
 

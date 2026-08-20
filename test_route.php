@@ -1,0 +1,1 @@
+<?php require 'vendor/autoload.php'; \ = require_once 'bootstrap/app.php'; \ = \->make(Illuminate\Contracts\Http\Kernel::class); \ = \App\Models\User::where('role', 'admin')->first(); auth()->login(\); \ = \->handle(Illuminate\Http\Request::create('/admin/scanner')); echo \->getStatusCode();
