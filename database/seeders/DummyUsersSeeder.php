@@ -2,7 +2,7 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
+use App\Models\User;
 use Illuminate\Database\Seeder;
 
 class DummyUsersSeeder extends Seeder
@@ -20,7 +20,7 @@ class DummyUsersSeeder extends Seeder
         ];
 
         foreach ($users as $user) {
-            \App\Models\User::updateOrCreate(
+            User::updateOrCreate(
                 ['email' => $user['email']],
                 $user
             );

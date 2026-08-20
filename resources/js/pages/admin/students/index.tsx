@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { Head, useForm, usePage, Link, router } from '@inertiajs/react';
 import DashboardLayout from '@/layouts/dashboard-layout';
-import { Plus, X, Trash2, Edit2, GraduationCap, CheckCircle2, Camera, CreditCard } from 'lucide-react';
+import { Plus, X, Trash2, Edit2, GraduationCap, CheckCircle2, Camera, CreditCard, Printer } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import StudentIdCard from '@/components/StudentIdCard';
+import BulkPrintModal from '@/components/BulkPrintModal';
 
 interface Classroom {
     id: number;
@@ -42,6 +43,7 @@ export default function StudentsManagement({ students, classrooms, filters }: St
     const [editingStudent, setEditingStudent] = useState<StudentUser | null>(null);
     const [confirmAction, setConfirmAction] = useState<{type: 'delete', student: StudentUser} | null>(null);
     const [printingStudent, setPrintingStudent] = useState<StudentUser | null>(null);
+    const [showBulkPrint, setShowBulkPrint] = useState(false);
 
     const [search, setSearch] = useState(filters?.search || '');
     const [classroomId, setClassroomId] = useState(filters?.classroom_id || 'all');
@@ -179,13 +181,22 @@ export default function StudentsManagement({ students, classrooms, filters }: St
                         <GraduationCap size={16} />
                         <span className="text-[12px] font-bold uppercase tracking-wider">Students List</span>
                     </div>
-                    <button 
-                        onClick={openAdd}
-                        className="flex items-center gap-1.5 bg-[#111318] text-white text-[12px] font-semibold px-4 py-2 rounded-xl hover:bg-gray-800 transition-colors shadow-sm"
-                    >
-                        <Plus size={14} />
-                        Add Student
-                    </button>
+                    <div className="flex items-center gap-2">
+                        <button 
+                            onClick={() => setShowBulkPrint(true)}
+                            className="flex items-center gap-1.5 bg-white border border-gray-200 text-gray-700 text-[12px] font-semibold px-4 py-2 rounded-xl hover:bg-gray-50 transition-colors shadow-sm"
+                        >
+                            <Printer size={14} />
+                            Print All QR
+                        </button>
+                        <button 
+                            onClick={openAdd}
+                            className="flex items-center gap-1.5 bg-[#111318] text-white text-[12px] font-semibold px-4 py-2 rounded-xl hover:bg-gray-800 transition-colors shadow-sm"
+                        >
+                            <Plus size={14} />
+                            Add Student
+                        </button>
+                    </div>
                 </div>
                 <div className="overflow-x-auto">
                     <table className="w-full text-left border-collapse">
@@ -442,6 +453,13 @@ export default function StudentsManagement({ students, classrooms, filters }: St
                 <StudentIdCard 
                     student={printingStudent} 
                     onClose={() => setPrintingStudent(null)} 
+                />
+            )}
+
+            {showBulkPrint && (
+                <BulkPrintModal 
+                    classrooms={classrooms}
+                    onClose={() => setShowBulkPrint(false)}
                 />
             )}
         </DashboardLayout>

@@ -42,13 +42,19 @@ class User extends Authenticatable implements PasskeyUser
     use HasFactory, HasTeams, Notifiable, PasskeyAuthenticatable, TwoFactorAuthenticatable;
 
     const ROLE_SUPER_ADMIN = 'super_admin';
+
     const ROLE_ADMIN = 'admin';
+
     const ROLE_TEACHER = 'teacher';
+
     const ROLE_STUDENT = 'student';
 
     const STATUS_PENDING_ACTIVATION = 'pending_activation';
+
     const STATUS_ACTIVE = 'active';
+
     const STATUS_SUSPENDED = 'suspended';
+
     const STATUS_INACTIVE = 'inactive';
 
     /**

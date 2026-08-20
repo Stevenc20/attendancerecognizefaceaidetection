@@ -11,7 +11,7 @@ class Classroom extends Model
         'major_id',
         'section',
         'name',
-        'teacher_id'
+        'teacher_id',
     ];
 
     public function grade()

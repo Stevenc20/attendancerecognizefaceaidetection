@@ -20,7 +20,7 @@ class StudentEnrollmentController extends Controller
 
         return Inertia::render('admin/students/enroll', [
             'student' => $student,
-            'hasEnrolled' => $hasEnrolled
+            'hasEnrolled' => $hasEnrolled,
         ]);
     }
 
@@ -31,7 +31,7 @@ class StudentEnrollmentController extends Controller
         }
 
         $request->validate([
-            'embedding' => 'required|array'
+            'embedding' => 'required|array',
         ]);
 
         // Delete any existing embedding
@@ -40,7 +40,7 @@ class StudentEnrollmentController extends Controller
         // Store new embedding
         FaceEmbedding::create([
             'user_id' => $student->id,
-            'embedding_data' => $request->embedding
+            'embedding_data' => $request->embedding,
         ]);
 
         return redirect()->route('admin.students')->with('success', "Face enrollment for {$student->name} successful!");

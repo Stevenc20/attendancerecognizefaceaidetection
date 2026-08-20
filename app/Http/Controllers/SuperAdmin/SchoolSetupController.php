@@ -3,10 +3,10 @@
 namespace App\Http\Controllers\SuperAdmin;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
-use App\Models\Major;
-use App\Models\Grade;
 use App\Models\Classroom;
+use App\Models\Grade;
+use App\Models\Major;
+use Illuminate\Http\Request;
 use Inertia\Inertia;
 
 class SchoolSetupController extends Controller
@@ -40,7 +40,7 @@ class SchoolSetupController extends Controller
         $grade = Grade::find($validated['grade_id']);
         $major = Major::find($validated['major_id']);
 
-        $name = $grade->name . ' ' . $major->code . ' ' . $validated['section'];
+        $name = $grade->name.' '.$major->code.' '.$validated['section'];
 
         Classroom::create([
             'grade_id' => $grade->id,
@@ -55,6 +55,7 @@ class SchoolSetupController extends Controller
     public function destroyClassroom(Classroom $classroom)
     {
         $classroom->delete();
+
         return redirect()->back()->with('success', 'Classroom deleted successfully.');
     }
 
@@ -66,23 +67,26 @@ class SchoolSetupController extends Controller
         ]);
 
         Major::create($validated);
+
         return redirect()->back()->with('success', 'Major added successfully.');
     }
 
     public function updateMajor(Request $request, Major $major)
     {
         $validated = $request->validate([
-            'code' => 'required|string|max:50|unique:majors,code,' . $major->id,
+            'code' => 'required|string|max:50|unique:majors,code,'.$major->id,
             'name' => 'required|string|max:255',
         ]);
 
         $major->update($validated);
+
         return redirect()->back()->with('success', 'Major updated successfully.');
     }
 
     public function destroyMajor(Major $major)
     {
         $major->delete();
+
         return redirect()->back()->with('success', 'Major deleted successfully.');
     }
 }

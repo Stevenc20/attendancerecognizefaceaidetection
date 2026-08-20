@@ -12,7 +12,7 @@ class AcademicYearController extends Controller
     public function index()
     {
         $academicYears = AcademicYear::orderBy('start_date', 'desc')->get();
-        
+
         return Inertia::render('super-admin/academic-years/index', [
             'academicYears' => $academicYears,
         ]);
@@ -29,20 +29,20 @@ class AcademicYearController extends Controller
         $validated['is_active'] = false; // New academic years are not active by default
 
         AcademicYear::create($validated);
-        
+
         return redirect()->back()->with('success', 'Academic Year added successfully.');
     }
 
     public function update(Request $request, AcademicYear $academicYear)
     {
         $validated = $request->validate([
-            'name' => 'required|string|max:255|unique:academic_years,name,' . $academicYear->id,
+            'name' => 'required|string|max:255|unique:academic_years,name,'.$academicYear->id,
             'start_date' => 'nullable|date',
             'end_date' => 'nullable|date|after_or_equal:start_date',
         ]);
 
         $academicYear->update($validated);
-        
+
         return redirect()->back()->with('success', 'Academic Year updated successfully.');
     }
 
@@ -50,10 +50,10 @@ class AcademicYearController extends Controller
     {
         // Deactivate all
         AcademicYear::query()->update(['is_active' => false]);
-        
+
         // Activate the selected one
         $academicYear->update(['is_active' => true]);
-        
+
         return redirect()->back()->with('success', 'Active Academic Year changed successfully.');
     }
 
@@ -64,7 +64,7 @@ class AcademicYearController extends Controller
         }
 
         $academicYear->delete();
-        
+
         return redirect()->back()->with('success', 'Academic Year deleted successfully.');
     }
 }

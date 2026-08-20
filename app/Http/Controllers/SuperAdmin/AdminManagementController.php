@@ -16,7 +16,7 @@ class AdminManagementController extends Controller
         $admins = User::where('role', User::ROLE_ADMIN)
             ->orderBy('name')
             ->get();
-            
+
         return Inertia::render('super-admin/admins/index', [
             'admins' => $admins,
         ]);
@@ -37,7 +37,7 @@ class AdminManagementController extends Controller
             'role' => User::ROLE_ADMIN,
             'account_status' => User::STATUS_ACTIVE,
         ]);
-        
+
         return redirect()->back()->with('success', 'Admin user created successfully.');
     }
 
@@ -62,13 +62,13 @@ class AdminManagementController extends Controller
         $admin->name = $request->name;
         $admin->email = $request->email;
         $admin->account_status = $request->account_status;
-        
+
         if ($request->filled('password')) {
             $admin->password = Hash::make($request->password);
         }
-        
+
         $admin->save();
-        
+
         return redirect()->back()->with('success', 'Admin user updated successfully.');
     }
 
@@ -79,7 +79,7 @@ class AdminManagementController extends Controller
         }
 
         $admin->delete();
-        
+
         return redirect()->back()->with('success', 'Admin user deleted successfully.');
     }
 }

@@ -3,10 +3,11 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
-use App\Models\FaceEmbedding;
 use App\Models\Attendance;
+use App\Models\FaceEmbedding;
+use App\Models\User;
 use Carbon\Carbon;
+use Illuminate\Http\Request;
 
 class ScannerController extends Controller
 {
@@ -29,7 +30,7 @@ class ScannerController extends Controller
         }, 'user.classroom.major' => function ($query) {
             $query->select('id', 'name', 'code');
         }])->get();
-        
+
         return response()->json($embeddings);
     }
 
@@ -43,13 +44,13 @@ class ScannerController extends Controller
 
         $userId = $request->user_id;
         if ($request->qr_token) {
-            $user = \App\Models\User::where('qr_token', $request->qr_token)->firstOrFail();
+            $user = User::where('qr_token', $request->qr_token)->firstOrFail();
             $userId = $user->id;
         }
         $today = Carbon::today()->format('Y-m-d');
         $now = Carbon::now();
         $timeIn = $now->format('H:i:s');
-        
+
         // Define late threshold (06:20 AM)
         $lateThreshold = Carbon::createFromTime(6, 20, 0);
         $status = $now->greaterThan($lateThreshold) ? 'late' : 'present';
@@ -63,16 +64,16 @@ class ScannerController extends Controller
             ]
         );
 
-        if (!$attendance->wasRecentlyCreated) {
+        if (! $attendance->wasRecentlyCreated) {
             return response()->json([
                 'message' => 'Attendance already recorded for today',
-                'attendance' => $attendance->load('user.classroom.major')
+                'attendance' => $attendance->load('user.classroom.major'),
             ]);
         }
 
         return response()->json([
             'message' => 'Attendance recorded successfully',
-            'attendance' => $attendance->load('user.classroom.major')
+            'attendance' => $attendance->load('user.classroom.major'),
         ]);
     }
 }

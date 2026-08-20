@@ -36,7 +36,7 @@ class DashboardController extends Controller
                 ->where('classroom_id', $homeroomClass->id)
                 ->orderBy('name', 'asc')
                 ->get();
-            
+
             $classMetrics['total_students'] = $students->count();
 
             // Get the last 7 distinct dates where attendance was recorded for this class
@@ -78,9 +78,9 @@ class DashboardController extends Controller
                     'name' => $student->name,
                     'nis' => $student->nis,
                     'avatar' => $student->avatar,
-                    'attendances' => []
+                    'attendances' => [],
                 ];
-                
+
                 foreach ($dates as $date) {
                     $record = $attendances->where('user_id', $student->id)->where('date', $date)->first();
                     $studentData['attendances'][$date] = $record ? ucfirst(strtolower($record->status)) : 'Absent';
@@ -102,14 +102,14 @@ class DashboardController extends Controller
         $validated = $request->validate([
             'user_id' => 'required|exists:users,id',
             'date' => 'required|date',
-            'status' => 'required|in:Present,Late,Absent'
+            'status' => 'required|in:Present,Late,Absent',
         ]);
 
         $teacher = Auth::user();
 
         // Verify the student belongs to the teacher's homeroom class
         $homeroomClass = Classroom::where('teacher_id', $teacher->id)->first();
-        if (!$homeroomClass) {
+        if (! $homeroomClass) {
             return back()->with('error', 'Not authorized');
         }
 
@@ -117,7 +117,7 @@ class DashboardController extends Controller
             ->where('classroom_id', $homeroomClass->id)
             ->first();
 
-        if (!$student) {
+        if (! $student) {
             return back()->with('error', 'Student not in your homeroom class');
         }
 
@@ -131,7 +131,7 @@ class DashboardController extends Controller
                 [
                     'status' => strtolower($validated['status']),
                     'method' => 'Manual',
-                    'time_in' => now()->format('H:i:s')
+                    'time_in' => now()->format('H:i:s'),
                 ]
             );
         }

@@ -16,7 +16,7 @@ class TeacherController extends Controller
         $teachers = User::where('role', User::ROLE_TEACHER)
             ->orderBy('name')
             ->get();
-            
+
         return Inertia::render('admin/teachers/index', [
             'teachers' => $teachers,
         ]);
@@ -39,7 +39,7 @@ class TeacherController extends Controller
             'role' => User::ROLE_TEACHER,
             'account_status' => User::STATUS_ACTIVE,
         ]);
-        
+
         return redirect()->back()->with('success', 'Teacher created successfully.');
     }
 
@@ -66,13 +66,13 @@ class TeacherController extends Controller
         $teacher->name = $request->name;
         $teacher->email = $request->email;
         $teacher->account_status = $request->account_status;
-        
+
         if ($request->filled('password')) {
             $teacher->password = Hash::make($request->password);
         }
-        
+
         $teacher->save();
-        
+
         return redirect()->back()->with('success', 'Teacher updated successfully.');
     }
 
@@ -83,7 +83,7 @@ class TeacherController extends Controller
         }
 
         $teacher->delete();
-        
+
         return redirect()->back()->with('success', 'Teacher deleted successfully.');
     }
 }

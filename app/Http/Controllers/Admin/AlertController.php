@@ -21,6 +21,7 @@ class AlertController extends Controller
     public function resolve(SecurityAlert $alert)
     {
         $alert->update(['resolved_at' => now()]);
+
         return back()->with('success', 'Alert resolved successfully');
     }
 

@@ -3,10 +3,8 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\User;
 use App\Models\Classroom;
-use App\Models\Grade;
-use App\Models\Major;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rules;
@@ -18,27 +16,52 @@ class StudentController extends Controller
     {
         $query = User::where('role', User::ROLE_STUDENT)
             ->with(['classroom.grade', 'classroom.major']);
-            
+
         if ($request->filled('classroom_id') && $request->classroom_id !== 'all') {
             $query->where('classroom_id', $request->classroom_id);
         }
-        
+
         if ($request->filled('search')) {
             $search = $request->search;
-            $query->where(function($q) use ($search) {
+            $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('nis', 'like', "%{$search}%");
+                    ->orWhere('nis', 'like', "%{$search}%");
             });
         }
 
         $students = $query->orderBy('name')->paginate(20)->withQueryString();
-            
+
         $classrooms = Classroom::with(['grade', 'major'])->get();
-            
+
         return Inertia::render('admin/students/index', [
             'students' => $students,
             'classrooms' => $classrooms,
-            'filters' => $request->only(['search', 'classroom_id'])
+            'filters' => $request->only(['search', 'classroom_id']),
+        ]);
+    }
+
+    public function print(Request $request)
+    {
+        $query = User::where('role', User::ROLE_STUDENT)
+            ->with(['classroom.grade', 'classroom.major']);
+
+        if ($request->filled('classroom_id') && $request->classroom_id !== 'all') {
+            $query->where('classroom_id', $request->classroom_id);
+        }
+
+        $query->orderBy('name');
+
+        // Fetch all matching without pagination
+        $students = $query->get();
+
+        // Determine layout (default 18)
+        $layout = $request->query('layout', 18);
+
+        return Inertia::render('admin/students/print', [
+            'students' => $students,
+            'layout' => (int) $layout,
+            'schoolName' => 'SMKN 40 JAKARTA',
+            'filters' => $request->only(['classroom_id']),
         ]);
     }
 
@@ -63,7 +86,7 @@ class StudentController extends Controller
             'role' => User::ROLE_STUDENT,
             'account_status' => User::STATUS_ACTIVE,
         ]);
-        
+
         return redirect()->back()->with('success', 'Student created successfully.');
     }
 
@@ -94,13 +117,13 @@ class StudentController extends Controller
         $student->email = $request->email;
         $student->classroom_id = $request->classroom_id;
         $student->account_status = $request->account_status;
-        
+
         if ($request->filled('password')) {
             $student->password = Hash::make($request->password);
         }
-        
+
         $student->save();
-        
+
         return redirect()->back()->with('success', 'Student updated successfully.');
     }
 
@@ -111,7 +134,7 @@ class StudentController extends Controller
         }
 
         $student->delete();
-        
+
         return redirect()->back()->with('success', 'Student deleted successfully.');
     }
 }

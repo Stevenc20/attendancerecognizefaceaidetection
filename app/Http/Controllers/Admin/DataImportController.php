@@ -11,7 +11,6 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Symfony\Component\Process\Process;
 
@@ -32,16 +31,16 @@ class DataImportController extends Controller
         ]);
 
         $file = $request->file('file');
-        
+
         $importsDir = storage_path('app/imports');
-        if (!is_dir($importsDir)) {
+        if (! is_dir($importsDir)) {
             mkdir($importsDir, 0755, true);
         }
-        
+
         $fileName = 'latest_import.xlsx';
         $file->move($importsDir, $fileName);
-        
-        $fullPath = $importsDir . '/' . $fileName;
+
+        $fullPath = $importsDir.'/'.$fileName;
         $scriptPath = storage_path('app/scripts/parse_excel.py');
 
         // Execute python script to parse Excel
@@ -49,28 +48,31 @@ class DataImportController extends Controller
         $process->setTimeout(300); // 5 minutes max
         $process->run();
 
-        if (!$process->isSuccessful()) {
+        if (! $process->isSuccessful()) {
             $errorDetail = $process->getErrorOutput() ?: $process->getOutput();
-            Log::error('Python Excel Parser Error: ' . $errorDetail);
-            return redirect()->back()->withErrors(['file' => 'System Error: ' . substr($errorDetail, 0, 200)]);
+            Log::error('Python Excel Parser Error: '.$errorDetail);
+
+            return redirect()->back()->withErrors(['file' => 'System Error: '.substr($errorDetail, 0, 200)]);
         }
 
         $output = trim($process->getOutput());
-        if (!file_exists($output)) {
-            Log::error('Python output file not found: ' . $output);
+        if (! file_exists($output)) {
+            Log::error('Python output file not found: '.$output);
+
             return redirect()->back()->withErrors(['file' => 'Failed to parse Excel: Internal processing error.']);
         }
 
         $jsonContent = file_get_contents($output);
         $parsedData = json_decode($jsonContent, true);
-        
+
         // Clean up the temp JSON file
         @unlink($output);
 
-        if (!$parsedData || isset($parsedData['error'])) {
+        if (! $parsedData || isset($parsedData['error'])) {
             $error = $parsedData['error'] ?? 'Unknown parsing error';
-            Log::error('Python Excel Parser Error: ' . $error);
-            return redirect()->back()->withErrors(['file' => 'Failed to parse Excel: ' . $error]);
+            Log::error('Python Excel Parser Error: '.$error);
+
+            return redirect()->back()->withErrors(['file' => 'Failed to parse Excel: '.$error]);
         }
 
         $stats = [
@@ -88,19 +90,21 @@ class DataImportController extends Controller
                 $gradeName = $classData['grade'];
                 $majorName = $classData['major'];
                 $groupNumber = $classData['group'];
-                
+
                 // Find or create Grade
                 $grade = Grade::firstOrCreate(['name' => $gradeName]);
-                
+
                 // Find or create Major (generate a short code if needed)
-                $majorCode = collect(explode(' ', $majorName))->map(function($word) { return substr($word, 0, 1); })->join('');
+                $majorCode = collect(explode(' ', $majorName))->map(function ($word) {
+                    return substr($word, 0, 1);
+                })->join('');
                 $major = Major::firstOrCreate(
                     ['name' => $majorName],
                     ['code' => $majorCode]
                 );
 
                 // Find or create Classroom
-                $classroomName = trim($gradeName . ' ' . $majorCode . ' ' . $groupNumber);
+                $classroomName = trim($gradeName.' '.$majorCode.' '.$groupNumber);
                 $classroom = Classroom::firstOrCreate(
                     [
                         'grade_id' => $grade->id,
@@ -114,22 +118,22 @@ class DataImportController extends Controller
                 $stats['classrooms_created']++;
 
                 // Process Teacher (Wali Kelas)
-                if (!empty($classData['teacher'])) {
+                if (! empty($classData['teacher'])) {
                     $teacherNip = $classData['teacher']['nip'];
                     $teacherName = $classData['teacher']['name'];
-                    
+
                     if ($teacherNip) {
                         $teacher = User::firstOrCreate(
                             ['nip' => $teacherNip],
                             [
                                 'name' => $teacherName,
-                                'email' => $teacherNip . '@teacher.smkn40.sch.id',
+                                'email' => $teacherNip.'@teacher.smkn40.sch.id',
                                 'password' => $defaultPassword,
                                 'role' => User::ROLE_TEACHER,
                                 'account_status' => User::STATUS_ACTIVE,
                             ]
                         );
-                        
+
                         // Assign teacher to classroom
                         $classroom->update(['teacher_id' => $teacher->id]);
                         $stats['teachers_imported']++;
@@ -141,12 +145,12 @@ class DataImportController extends Controller
                 foreach ($classData['students'] as $studentData) {
                     $nis = $studentData['nis'];
                     $name = $studentData['name'];
-                    
+
                     if ($nis) {
                         $studentsToUpsert[] = [
                             'nis' => $nis,
                             'name' => $name,
-                            'email' => $nis . '@student.smkn40.sch.id',
+                            'email' => $nis.'@student.smkn40.sch.id',
                             'password' => $defaultPassword,
                             'role' => User::ROLE_STUDENT,
                             'classroom_id' => $classroom->id,
@@ -158,7 +162,7 @@ class DataImportController extends Controller
                     }
                 }
 
-                if (!empty($studentsToUpsert)) {
+                if (! empty($studentsToUpsert)) {
                     User::upsert(
                         $studentsToUpsert,
                         ['nis'],

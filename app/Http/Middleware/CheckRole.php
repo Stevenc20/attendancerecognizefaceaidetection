@@ -4,6 +4,7 @@ namespace App\Http\Middleware;
 
 use Closure;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Symfony\Component\HttpFoundation\Response;
 
 class CheckRole
@@ -17,17 +18,17 @@ class CheckRole
     {
         $user = $request->user();
 
-        if (!$user) {
+        if (! $user) {
             return redirect()->route('login');
         }
 
-        \Illuminate\Support\Facades\Log::info('CheckRole debugging:', [
+        Log::info('CheckRole debugging:', [
             'user_role' => $user->role,
             'expected_roles' => $roles,
             'url' => $request->url(),
         ]);
 
-        if (!in_array($user->role, $roles)) {
+        if (! in_array($user->role, $roles)) {
             abort(403, 'Unauthorized access to this section.');
         }
 

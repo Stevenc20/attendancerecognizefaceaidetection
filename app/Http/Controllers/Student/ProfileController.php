@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\Student;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 
@@ -21,8 +20,8 @@ class ProfileController extends Controller
                 'nisn' => $user->nisn,
                 'classroom_name' => $user->classroom ? $user->classroom->name : '-',
                 'teacher_name' => ($user->classroom && $user->classroom->teacher) ? $user->classroom->teacher->name : '-',
-                'joined_at' => $user->created_at->format('F Y')
-            ]
+                'joined_at' => $user->created_at->format('F Y'),
+            ],
         ]);
     }
 }

@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Student;
 use App\Http\Controllers\Controller;
 use App\Models\Attendance;
 use App\Models\FaceEmbedding;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
@@ -29,7 +28,7 @@ class DashboardController extends Controller
         $totalLate = $attendances->where('status', 'Late')->count();
         $totalAbsent = $attendances->where('status', 'Absent')->count();
         $totalSessions = $totalPresent + $totalLate + $totalAbsent;
-        
+
         $attendanceRate = $totalSessions > 0 ? round((($totalPresent + $totalLate) / $totalSessions) * 100) : 100;
 
         // Get today's status
@@ -54,7 +53,7 @@ class DashboardController extends Controller
                 'rate' => $attendanceRate,
             ],
             'todayRecord' => $todayRecord,
-            'recentAttendances' => $recentAttendances
+            'recentAttendances' => $recentAttendances,
         ]);
     }
 }

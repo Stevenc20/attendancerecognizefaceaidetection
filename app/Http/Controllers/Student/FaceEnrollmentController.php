@@ -16,14 +16,14 @@ class FaceEnrollmentController extends Controller
         $hasEnrolled = FaceEmbedding::where('user_id', $user->id)->exists();
 
         return Inertia::render('student/enrollment/index', [
-            'hasEnrolled' => $hasEnrolled
+            'hasEnrolled' => $hasEnrolled,
         ]);
     }
 
     public function store(Request $request)
     {
         $request->validate([
-            'embedding' => 'required|array'
+            'embedding' => 'required|array',
         ]);
 
         $user = Auth::user();
@@ -34,7 +34,7 @@ class FaceEnrollmentController extends Controller
         // Store new embedding
         FaceEmbedding::create([
             'user_id' => $user->id,
-            'embedding_data' => $request->embedding
+            'embedding_data' => $request->embedding,
         ]);
 
         return redirect()->route('student.dashboard')->with('success', 'Face enrollment successful!');

@@ -2,11 +2,10 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Seeder;
-use Illuminate\Support\Facades\DB;
+use App\Models\AcademicYear;
 use App\Models\Grade;
 use App\Models\Major;
-use App\Models\AcademicYear;
+use Illuminate\Database\Seeder;
 
 class MasterDataSeeder extends Seeder
 {

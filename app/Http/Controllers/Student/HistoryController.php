@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Student;
 
 use App\Http\Controllers\Controller;
 use App\Models\Attendance;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 
@@ -18,7 +17,7 @@ class HistoryController extends Controller
             ->get();
 
         return Inertia::render('student/history/index', [
-            'history' => $history
+            'history' => $history,
         ]);
     }
 }

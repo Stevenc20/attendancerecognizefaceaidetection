@@ -25,7 +25,7 @@ class SessionController extends Controller
             $students = User::where('role', User::ROLE_STUDENT)
                 ->where('classroom_id', $homeroomClass->id)
                 ->pluck('id');
-            
+
             // Get dates where attendance was recorded for this class
             $dates = Attendance::whereIn('user_id', $students)
                 ->select('date')
@@ -33,16 +33,16 @@ class SessionController extends Controller
                 ->orderBy('date', 'desc')
                 ->take(10)
                 ->pluck('date');
-            
+
             // For each date, calculate stats
             foreach ($dates as $date) {
                 $attendances = Attendance::whereIn('user_id', $students)
                     ->where('date', $date)
                     ->get();
-                
+
                 $presentCount = $attendances->whereIn('status', ['Present', 'present', 'Late', 'late'])->count();
                 $absentCount = count($students) - $presentCount;
-                
+
                 $sessions[] = [
                     'date' => $date,
                     'present_count' => $presentCount,

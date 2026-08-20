@@ -26,25 +26,25 @@ class ReportController extends Controller
                 ->where('classroom_id', $homeroomClass->id)
                 ->orderBy('name', 'asc')
                 ->get();
-            
+
             // Get dates where attendance was recorded for this class in current month
             $dates = Attendance::whereIn('user_id', $students->pluck('id'))
                 ->whereMonth('date', now()->month)
                 ->select('date')
                 ->distinct()
                 ->pluck('date');
-            
+
             $totalSessions = count($dates);
 
             foreach ($students as $student) {
                 $attendances = Attendance::where('user_id', $student->id)
                     ->whereIn('date', $dates)
                     ->get();
-                
+
                 $presentCount = $attendances->whereIn('status', ['Present', 'present'])->count();
                 $lateCount = $attendances->whereIn('status', ['Late', 'late'])->count();
                 $absentCount = $totalSessions - ($presentCount + $lateCount);
-                
+
                 $reportData[] = [
                     'student' => $student,
                     'present' => $presentCount,
