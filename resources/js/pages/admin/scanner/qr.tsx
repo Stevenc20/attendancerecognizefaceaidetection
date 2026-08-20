@@ -153,7 +153,7 @@ export default function QRScannerPage() {
                         
                         <div className="inline-flex items-center gap-2 bg-blue-50 px-4 py-2 rounded-full border border-blue-100">
                             <span className="w-2.5 h-2.5 rounded-full bg-blue-500 animate-pulse relative"></span>
-                            <span className="text-sm font-bold text-blue-700">Sistem Aktif & Menunggu Tembakan Alat...</span>
+                            <span className="text-sm font-bold text-blue-700">Sistem Aktif & Menunggu Scan Kartu Pelajar...</span>
                         </div>
                     </div>
                 ) : (
