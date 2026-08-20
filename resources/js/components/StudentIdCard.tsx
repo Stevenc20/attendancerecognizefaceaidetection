@@ -55,12 +55,12 @@ export default function StudentIdCard({ student, onClose }: { student: Student; 
 
             <div ref={printRef} className="bg-white" style={{ width: '350px', minHeight: '550px', position: 'relative', overflow: 'hidden' }}>
                 
-                <style dangerouslySetInnerHTML={{__html: 
+                <style dangerouslySetInnerHTML={{__html: `
                     @media print {
                         @page { size: A4; margin: 0; }
                         body { background: white; margin: 0; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
                     }
-                }} />
+                `}} />
 
                 <div style={{ position: 'absolute', top: '-50px', left: '-50px', width: '200px', height: '200px', background: '#D40000', borderRadius: '50%', zIndex: 0 }}></div>
                 <div style={{ position: 'absolute', top: '-80px', right: '-80px', width: '150px', height: '150px', background: '#FFBE00', borderRadius: '50%', zIndex: 0, border: '20px solid #D40000' }}></div>
