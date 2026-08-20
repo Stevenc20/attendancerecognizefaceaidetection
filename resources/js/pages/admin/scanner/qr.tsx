@@ -71,7 +71,7 @@ export default function QRScannerPage() {
                 const user = data.attendance?.user;
                 if (user) {
                     const firstName = user.name.split(' ')[0];
-                    const utterance = new SpeechSynthesisUtterance(${firstName} berhasil absen);
+                    const utterance = new SpeechSynthesisUtterance(`${firstName} berhasil absen`);
                     utterance.lang = 'id-ID';
                     window.speechSynthesis.speak(utterance);
                     
@@ -137,7 +137,7 @@ export default function QRScannerPage() {
                         <p className="text-gray-500">Tembakkan barcode scanner ke Kartu Pelajar Anda.</p>
                     </div>
                 ) : (
-                    <div className={g-white rounded-3xl p-10 shadow-lg border-t-8 flex flex-col items-center max-w-lg w-full text-center animate-in zoom-in duration-300 }>
+                    <div className={`bg-white rounded-3xl p-10 shadow-lg border-t-8 flex flex-col items-center max-w-lg w-full text-center animate-in zoom-in duration-300 ${lastScan.status === 'success' ? 'border-emerald-500' : lastScan.status === 'already' ? 'border-amber-500' : 'border-red-500'}`}>
                         {lastScan.status === 'success' && <CheckCircle2 className="w-20 h-20 text-emerald-500 mb-6" />}
                         {lastScan.status === 'already' && <Clock className="w-20 h-20 text-amber-500 mb-6" />}
                         {lastScan.status === 'error' && <XCircle className="w-20 h-20 text-red-500 mb-6" />}
@@ -147,7 +147,11 @@ export default function QRScannerPage() {
                             <p className="text-lg font-bold text-gray-500 mb-6">{lastScan.user.classroom.name}</p>
                         )}
                         
-                        <div className={inline-block px-6 py-2 rounded-full font-bold text-lg uppercase tracking-wider }>
+                        <div className={`inline-block px-6 py-2 rounded-full font-bold text-lg uppercase tracking-wider ${
+                            lastScan.status === 'success' ? 'bg-emerald-100 text-emerald-700' : 
+                            lastScan.status === 'already' ? 'bg-amber-100 text-amber-700' : 
+                            'bg-red-100 text-red-700'
+                        }`}>
                             {lastScan.message}
                         </div>
                     </div>
@@ -175,7 +179,11 @@ export default function QRScannerPage() {
                                     <div className="font-bold text-[#111318] truncate text-sm">{log.user.name}</div>
                                     <div className="text-xs text-gray-500 flex items-center justify-between">
                                         <span>{log.time}</span>
-                                        <span className={ont-semibold }>{log.message}</span>
+                                        <span className={`font-semibold ${
+                                            log.status === 'success' ? 'text-emerald-600' : 
+                                            log.status === 'already' ? 'text-amber-600' : 
+                                            'text-red-600'
+                                        }`}>{log.message}</span>
                                     </div>
                                 </div>
                             </div>
