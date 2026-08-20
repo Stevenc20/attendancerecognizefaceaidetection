@@ -94,6 +94,7 @@ export default function QRScannerPage() {
                     
                     // Improved Indonesian TTS
                     if (!isAlready) {
+                        window.speechSynthesis.cancel(); // Clear any stuck queues
                         const utterance = new SpeechSynthesisUtterance(`${firstName} berhasil absen`);
                         utterance.lang = 'id-ID';
                         utterance.rate = 0.9;
@@ -142,6 +143,7 @@ export default function QRScannerPage() {
     const unlockAudio = () => {
         inputRef.current?.focus();
         // Play silent utterance to unlock SpeechSynthesis on mobile/Chrome
+        window.speechSynthesis.cancel();
         const u = new SpeechSynthesisUtterance('');
         u.volume = 0;
         window.speechSynthesis.speak(u);
