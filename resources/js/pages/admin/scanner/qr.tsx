@@ -14,6 +14,7 @@ interface LogEntry {
     };
     status: 'success' | 'already' | 'error';
     message: string;
+    count?: number;
 }
 
 export default function QRScannerPage() {
@@ -89,21 +90,39 @@ export default function QRScannerPage() {
                 const user = data.attendance?.user;
                 if (user) {
                     const firstName = user.name.split(' ')[0];
-                    const utterance = new SpeechSynthesisUtterance(`${firstName} berhasil absen`);
-                    utterance.lang = 'id-ID';
-                    window.speechSynthesis.speak(utterance);
+                    const isAlready = data.message.includes('already');
                     
-                    const time = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-                    const newLog: LogEntry = {
-                        id: Math.random().toString(36).substring(7),
-                        time,
-                        user,
-                        status: data.message.includes('already') ? 'already' : 'success',
-                        message: data.message.includes('already') ? 'Sudah Absen' : 'Berhasil Absen',
-                    };
+                    // Improved Indonesian TTS
+                    if (!isAlready) {
+                        const utterance = new SpeechSynthesisUtterance(`${firstName} berhasil absen`);
+                        utterance.lang = 'id-ID';
+                        utterance.rate = 0.9;
+                        const voices = window.speechSynthesis.getVoices();
+                        const idVoice = voices.find(v => v.lang.includes('id') || v.lang.includes('ID') || v.name.includes('Indonesia'));
+                        if (idVoice) utterance.voice = idVoice;
+                        window.speechSynthesis.speak(utterance);
+                    }
                     
-                    setLastScan(newLog);
-                    setLogs(prev => [newLog, ...prev].slice(0, 10));
+                    setLogs(prev => {
+                        const existing = prev.find(l => l.user.id === user.id);
+                        if (existing) {
+                            const updated = { ...existing, count: (existing.count || 1) + 1, status: 'already' as const, message: 'Sudah Absen' };
+                            setLastScan(updated);
+                            return prev.map(l => l.id === existing.id ? updated : l);
+                        } else {
+                            const time = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+                            const newLog: LogEntry = {
+                                id: Math.random().toString(36).substring(7),
+                                time,
+                                user,
+                                status: isAlready ? 'already' : 'success',
+                                message: isAlready ? 'Sudah Absen' : 'Berhasil Absen',
+                                count: 1
+                            };
+                            setLastScan(newLog);
+                            return [newLog, ...prev].slice(0, 10);
+                        }
+                    });
                 }
             } else {
                  const errorLog: LogEntry = {
@@ -222,7 +241,14 @@ export default function QRScannerPage() {
                                 <div className="flex-1 min-w-0">
                                     <div className="font-bold text-[#111318] truncate text-sm">{log.user.name}</div>
                                     <div className="text-xs text-gray-500 flex items-center justify-between">
-                                        <span>{log.time}</span>
+                                        <div className="flex items-center gap-2">
+                                            <span>{log.time}</span>
+                                            {log.count && log.count > 1 && (
+                                                <span className="bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded text-[10px] font-bold">
+                                                    {log.count}x
+                                                </span>
+                                            )}
+                                        </div>
                                         <span className={`font-semibold ${
                                             log.status === 'success' ? 'text-emerald-600' : 
                                             log.status === 'already' ? 'text-amber-600' : 
