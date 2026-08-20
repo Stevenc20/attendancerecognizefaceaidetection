@@ -421,10 +421,10 @@ export default function FaceScanner() {
                                           let currentLabel = 'unknown';
                                           let marginTooClose = false;
                                           
-                                          if (top1.label !== 'unknown' && top1.distance < 0.38) {
+                                          if (top1.label !== 'unknown' && top1.distance < 0.40) {
                                               const margin = top2.distance - top1.distance;
                                               console.log(`[SCANNER DEBUG] Track #${currentTId} | Quality: ${(quality.score * 100).toFixed(1)}% | TOP 1: ${top1.label} (${top1.distance.toFixed(3)}) | TOP 2: ${top2.label} (${top2.distance.toFixed(3)}) | MARGIN: ${margin.toFixed(3)}`);
-                                              const requiredMargin = top1.distance < 0.30 ? 0.03 : 0.06;
+                                              const requiredMargin = top1.distance < 0.35 ? 0.02 : 0.04;
                                               if (margin >= requiredMargin) {
                                                   currentLabel = top1.label;
                                               } else {
