@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Head, Link } from '@inertiajs/react';
 import { ScanLine, CheckCircle2, XCircle, Clock } from 'lucide-react';
-import { attendance } from '@/actions/admin/scanner-controller';
+import { attendance } from '@/routes/admin/scanner';
 
 interface LogEntry {
     id: string;
