@@ -435,6 +435,7 @@ export default function StudentsManagement({ students, classrooms, filters }: St
                             <button onClick={executeConfirmAction} disabled={processing} className="px-5 py-2.5 text-[13px] font-bold rounded-xl w-full" style={{ backgroundColor: '#D40000', color: 'white' }}>Delete</button>
                         </div>
                     </div>
+                </div>
             )}
 
             {printingStudent && (
