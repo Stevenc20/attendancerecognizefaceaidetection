@@ -136,11 +136,12 @@ export default function QRScannerPage() {
                 const user = data.attendance?.user;
                 if (user) {
                     const firstName = user.name.split(' ')[0];
-                    const isAlready = data.message.includes('already');
+                    const isAlready = data.message?.includes('already');
                     
-                    // Improved Indonesian TTS
+                    // Mainkan suara presensi
                     if (!isAlready) {
-                        speak(`${firstName} berhasil`);
+                        const audio = new Audio('/audio/berhasil.mp3');
+                        audio.play().catch(e => console.warn('Audio play failed:', e));
                     } else {
                         speak(`${firstName} sudah absen hari ini`);
                     }
