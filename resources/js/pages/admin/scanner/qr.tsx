@@ -62,12 +62,11 @@ export default function QRScannerPage() {
             utterance.voice = idVoices.find(v => v.name.includes('Natural') || v.name.includes('Online')) || idVoices[0];
         }
 
-        utterance.onend = () => {
+        // Hapus onend karena browser sering ngasih jeda diam terlalu lama
+        // Kita pakai setTimeout 800ms biar ngebut!
+        setTimeout(() => {
             playAudio(type);
-        };
-        utterance.onerror = () => {
-            playAudio(type);
-        };
+        }, 800);
 
         window.speechSynthesis.speak(utterance);
     };
