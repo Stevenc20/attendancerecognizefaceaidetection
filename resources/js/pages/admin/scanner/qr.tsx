@@ -181,10 +181,6 @@ export default function QRScannerPage() {
                 <Link href="/dashboard" className="absolute top-8 left-8 text-gray-500 hover:text-gray-900 font-medium">
                     &larr; Back to Dashboard
                 </Link>
-                <div className="absolute bottom-6 left-8 text-xs font-medium text-gray-400">
-                    Created by Steven Christian
-                </div>
-
                 <div className="text-center mb-12">
                     <div className="flex items-center justify-center gap-3 mb-4">
                         <img src="/images/logo.jpg" alt="Logo" className="w-12 h-12 rounded-full shadow-sm" />
@@ -195,6 +191,9 @@ export default function QRScannerPage() {
                     </div>
                     <div className="text-gray-500 font-medium mt-2">
                         {currentTime.toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                    </div>
+                    <div className="text-xs font-medium text-gray-400 mt-1">
+                        Created by Steven Christian
                     </div>
                 </div>
 
