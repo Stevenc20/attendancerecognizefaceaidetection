@@ -76,12 +76,14 @@ export default function QRScannerPage() {
 
         const voices = window.speechSynthesis.getVoices();
         
-        // Prioritaskan suara perempuan Google atau Microsoft Gadis (Natural)
+        // 1. Prioritas Google (pasti cewek)
+        // 2. Prioritas Gadis / Ayu (nama cewek Microsoft)
+        // 3. Hindari Ardi / Andika (nama cowok)
         const voice = 
-            voices.find(v => v.lang === 'id-ID' && v.name.toLowerCase().includes('google')) ||
-            voices.find(v => v.lang === 'id-ID' && v.name.toLowerCase().includes('gadis')) ||
-            voices.find(v => v.lang === 'id-ID') ||
-            voices.find(v => v.lang.startsWith('id'));
+            voices.find(v => v.lang.includes('id') && v.name.toLowerCase().includes('google')) ||
+            voices.find(v => v.lang.includes('id') && (v.name.toLowerCase().includes('gadis') || v.name.toLowerCase().includes('ayu'))) ||
+            voices.find(v => v.lang.includes('id') && !v.name.toLowerCase().includes('ardi') && !v.name.toLowerCase().includes('andika')) ||
+            voices.find(v => v.lang.includes('id'));
 
         const utterance = new SpeechSynthesisUtterance(text);
         utterance.lang = 'id-ID';
