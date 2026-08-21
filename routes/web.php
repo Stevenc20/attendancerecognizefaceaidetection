@@ -9,6 +9,7 @@ use App\Http\Controllers\Admin\StudentController;
 use App\Http\Controllers\Admin\StudentEnrollmentController;
 use App\Http\Controllers\Admin\TeacherController;
 use App\Http\Controllers\SettingController;
+use App\Http\Controllers\Student\DashboardController;
 use App\Http\Controllers\Student\DeviceController;
 use App\Http\Controllers\Student\FaceEnrollmentController;
 use App\Http\Controllers\Student\HistoryController;
@@ -96,7 +97,7 @@ Route::middleware(['auth', 'verified', CheckActivation::class])->group(function 
 
     // Student Dashboard
     Route::middleware(['role:student'])->group(function () {
-        Route::get('/student/dashboard', [App\Http\Controllers\Student\DashboardController::class, 'index'])->name('student.dashboard');
+        Route::get('/student/dashboard', [DashboardController::class, 'index'])->name('student.dashboard');
 
         // Face Enrollment
         Route::get('/student/face-enrollment', [FaceEnrollmentController::class, 'index'])->name('student.face-enrollment');
@@ -142,10 +143,13 @@ Route::middleware(['auth', 'verified', CheckActivation::class])->group(function 
         Route::post('/super-admin/settings', [SettingController::class, 'store'])->name('super-admin.settings.store');
     });
 
-    // Admin Dashboard
-    Route::middleware(['role:admin,super_admin'])->group(function () {
-        Route::get('/admin/dashboard', [App\Http\Controllers\Admin\DashboardController::class, 'index'])->name('admin.dashboard');
+    // Piket Dashboard
+    Route::middleware(['role:piket,super_admin'])->group(function () {
+        Route::get('/piket/dashboard', [App\Http\Controllers\Piket\DashboardController::class, 'index'])->name('piket.dashboard');
+    });
 
+    // Shared Scanner Access (Admin, Super Admin, Piket)
+    Route::middleware(['role:admin,super_admin,piket'])->group(function () {
         // Face Scanner (Kiosk)
         Route::get('/admin/scanner', [ScannerController::class, 'index'])->name('admin.scanner.index');
         Route::get('/admin/scanner/embeddings', [ScannerController::class, 'fetchEmbeddings'])->name('admin.scanner.embeddings');
@@ -153,6 +157,11 @@ Route::middleware(['auth', 'verified', CheckActivation::class])->group(function 
 
         // Dedicated QR Scanner
         Route::get('/admin/qr-scanner', [ScannerController::class, 'qr'])->name('admin.scanner.qr');
+    });
+
+    // Admin Dashboard
+    Route::middleware(['role:admin,super_admin'])->group(function () {
+        Route::get('/admin/dashboard', [App\Http\Controllers\Admin\DashboardController::class, 'index'])->name('admin.dashboard');
 
         // Teacher Management
         Route::get('/admin/teachers', [TeacherController::class, 'index'])->name('admin.teachers');

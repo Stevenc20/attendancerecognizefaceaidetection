@@ -7,6 +7,7 @@ use App\Models\Classroom;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rules;
 use Inertia\Inertia;
 
@@ -85,7 +86,7 @@ class StudentController extends Controller
             'classroom_id' => $request->classroom_id,
             'role' => User::ROLE_STUDENT,
             'account_status' => User::STATUS_ACTIVE,
-            'qr_token' => \Illuminate\Support\Str::random(32),
+            'qr_token' => Str::random(32),
         ]);
 
         return redirect()->back()->with('success', 'Student created successfully.');

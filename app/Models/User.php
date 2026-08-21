@@ -49,6 +49,8 @@ class User extends Authenticatable implements PasskeyUser
 
     const ROLE_STUDENT = 'student';
 
+    const ROLE_PIKET = 'piket';
+
     const STATUS_PENDING_ACTIVATION = 'pending_activation';
 
     const STATUS_ACTIVE = 'active';

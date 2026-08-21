@@ -19,6 +19,7 @@ const getDashboardUrl = (role: string) => {
         case 'admin': return '/admin/dashboard';
         case 'teacher': return '/teacher/dashboard';
         case 'student': return '/student/dashboard';
+        case 'piket': return '/piket/dashboard';
         default: return '/dashboard';
     }
 };
@@ -33,6 +34,11 @@ const getNavItems = (role: string) => {
                 { name: 'Academic Year', icon: Calendar, href: '/super-admin/academic-years' },
                 { name: 'Admin Management', icon: Users, href: '/super-admin/admins' },
                 { name: 'System Settings', icon: Settings, href: '/super-admin/settings' },
+            ];
+        case 'piket':
+            return [
+                { name: 'Dashboard Piket', icon: LayoutGrid, href: dashboardUrl },
+                { name: 'QR Scanner', icon: ScanLine, href: '/admin/qr-scanner' },
             ];
         case 'admin':
             return [
