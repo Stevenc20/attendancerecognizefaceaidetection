@@ -25,6 +25,7 @@ export default function QRScannerPage() {
     const [inputValue, setInputValue] = useState('');
     const inputRef = useRef<HTMLInputElement>(null);
     const processingRef = useRef<boolean>(false);
+    const lastSubmittedTokenRef = useRef<string>('');
     
     const audioSuccessRef = useRef<HTMLAudioElement>(null);
     const audioAlreadyRef = useRef<HTMLAudioElement>(null);
@@ -69,7 +70,7 @@ export default function QRScannerPage() {
                     processQRAttendance(token);
                 }
                 setInputValue('');
-            }, 400); // Wait 400ms after last character is typed to accommodate slow/laggy physical scanners
+            }, 500); // Wait 500ms after last character is typed to accommodate slow/laggy physical scanners
             return () => clearTimeout(timeout);
         }
     }, [inputValue]);
@@ -85,7 +86,14 @@ export default function QRScannerPage() {
 
     const processQRAttendance = (qrToken: string) => {
         if (processingRef.current) return;
+        if (lastSubmittedTokenRef.current === qrToken) {
+            // Reset after 3 seconds so they can scan again later if needed
+            setTimeout(() => { lastSubmittedTokenRef.current = ''; }, 3000);
+            return;
+        }
+        
         processingRef.current = true;
+        lastSubmittedTokenRef.current = qrToken;
 
         fetch(attendance.url(), {
             method: 'POST',
