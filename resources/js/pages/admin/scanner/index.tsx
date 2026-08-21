@@ -214,6 +214,37 @@ export default function FaceScanner() {
         };
     }, []);
 
+    const playAudio = (type: 'success' | 'already') => {
+        try {
+            const audioEl = type === 'success' ? audioSuccessRef.current : audioAlreadyRef.current;
+            if (audioEl) {
+                audioEl.currentTime = 0;
+                audioEl.play().catch(e => console.error("Audio DOM play failed:", e));
+            }
+        } catch (error) {
+            console.error("Audio trigger error:", error);
+        }
+    };
+
+    const speakName = (name: string) => {
+        if (!('speechSynthesis' in window)) return;
+        window.speechSynthesis.cancel();
+        
+        const utterance = new SpeechSynthesisUtterance(name);
+        utterance.lang = 'id-ID';
+        utterance.rate = 1.0;
+        
+        const voices = window.speechSynthesis.getVoices();
+        const idVoices = voices.filter(v => v.lang.includes('id') || v.lang.includes('ID'));
+        const preferredVoice = idVoices.find(v => v.name.toLowerCase().includes('female') || v.name.toLowerCase().includes('perempuan')) || idVoices[0];
+        
+        if (preferredVoice) {
+            utterance.voice = preferredVoice;
+        }
+
+        window.speechSynthesis.speak(utterance);
+    };
+
     const startCamera = async (deviceId?: string) => {
         try {
             if (videoRef.current && videoRef.current.srcObject) {
@@ -649,17 +680,17 @@ export default function FaceScanner() {
         })
         .then(data => {
             const isAlready = data.message?.includes('already');
+            const firstName = user.name.split(' ')[0];
             
             // Play persistent audio
-            try {
-                const audioEl = isAlready ? audioAlreadyRef.current : audioSuccessRef.current;
-                if (audioEl) {
-                    audioEl.currentTime = 0;
-                    audioEl.play().catch(e => console.error("Audio DOM play failed:", e));
-                }
-            } catch (error) {
-                console.error("Audio trigger error:", error);
+            if (!isAlready) {
+                playAudio('success');
+            } else {
+                playAudio('already');
             }
+
+            // Sebutkan nama panggilannya 0.5 detik setelah MP3 jalan
+            setTimeout(() => speakName(firstName), 500);
 
             if (isAlready) {
                 alreadyPresentUsersRef.current.add(user.id);

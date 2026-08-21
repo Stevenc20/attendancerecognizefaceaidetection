@@ -42,6 +42,26 @@ export default function QRScannerPage() {
         }
     };
 
+    const speakName = (name: string) => {
+        if (!('speechSynthesis' in window)) return;
+        window.speechSynthesis.cancel(); // Stop current speech
+        
+        const utterance = new SpeechSynthesisUtterance(name);
+        utterance.lang = 'id-ID';
+        utterance.rate = 1.0;
+        
+        // Try to pick a good Indonesian voice
+        const voices = window.speechSynthesis.getVoices();
+        const idVoices = voices.filter(v => v.lang.includes('id') || v.lang.includes('ID'));
+        const preferredVoice = idVoices.find(v => v.name.toLowerCase().includes('female') || v.name.toLowerCase().includes('perempuan')) || idVoices[0];
+        
+        if (preferredVoice) {
+            utterance.voice = preferredVoice;
+        }
+
+        window.speechSynthesis.speak(utterance);
+    };
+
     // Live clock timer
     useEffect(() => {
         const timer = setInterval(() => setCurrentTime(new Date()), 1000);
@@ -121,6 +141,9 @@ export default function QRScannerPage() {
                     } else {
                         playAudio('already');
                     }
+
+                    // Sebutkan nama panggilannya 0.5 detik setelah MP3 jalan
+                    setTimeout(() => speakName(firstName), 500);
                     
                     setLogs(prev => {
                         const existing = prev.find(l => l.user.id === user.id);
