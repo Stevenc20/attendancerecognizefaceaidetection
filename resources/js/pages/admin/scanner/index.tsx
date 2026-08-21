@@ -605,22 +605,18 @@ export default function FaceScanner() {
             return;
         }
 
-        // Play sound
-        const audio = new Audio('/sounds/ding.mp3'); // We'll assume a sound file exists or just let it fail silently
-        audio.play().catch(e => {});
-
         // Add optimistic log
         const logId = Math.random().toString(36).substring(7);
         const time = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
         const nowTime = new Date();
-        const isLate = nowTime.getHours() > 6 || (nowTime.getHours() === 6 && nowTime.getMinutes() >= 20);
+        const isLate = nowTime.getHours() > 6 || (nowTime.getHours() === 6 && nowTime.getMinutes() > 20);
         
         const newLog: LogEntry = {
             id: logId,
             time,
             user,
             status: isLate ? 'late' : 'success',
-            message: isLate ? 'Late' : 'Recorded',
+            message: 'Pending...',
             count: 1
         };
 
@@ -648,15 +644,23 @@ export default function FaceScanner() {
 
             return (await parseJsonResponse(res)) as { message?: string };
         })
-          .then(data => {
-              if (data.message === 'Attendance already recorded for today') {
-                  alreadyPresentUsersRef.current.add(user.id);
-                  setLogs(prev => prev.map(l => l.id === logId ? { ...l, status: 'already', message: 'Already Present' } : l));
-              } else {
-                  // If successful, also mark as present for future frames
-                  alreadyPresentUsersRef.current.add(user.id);
-              }
-          })
+        .then(data => {
+            const isAlready = data.message?.includes('already');
+            
+            // Play audio based on response
+            const audioPath = isAlready ? '/audio/sudahtercatat.mp3' : '/audio/hadir.mp3';
+            const audio = new Audio(audioPath);
+            audio.play().catch(e => console.warn('Audio play failed:', e));
+
+            if (isAlready) {
+                alreadyPresentUsersRef.current.add(user.id);
+                setLogs(prev => prev.map(l => l.id === logId ? { ...l, status: 'already', message: 'Sudah Absen' } : l));
+            } else {
+                // If successful, also mark as present for future frames
+                alreadyPresentUsersRef.current.add(user.id);
+                setLogs(prev => prev.map(l => l.id === logId ? { ...l, message: isLate ? 'Terlambat' : 'Hadir Tepat Waktu' } : l));
+            }
+        })
         .catch(err => {
             console.error("Failed to record", err);
             setLogs(prev => prev.map(l => l.id === logId ? { ...l, status: 'error', message: 'Network Error' } : l));

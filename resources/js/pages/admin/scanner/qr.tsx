@@ -68,50 +68,10 @@ export default function QRScannerPage() {
         setInputValue('');
     };
 
-    const speak = (text: string) => {
-        if (!('speechSynthesis' in window)) return;
-
-        const synth = window.speechSynthesis;
-        synth.cancel();
-
-        let voices = window.speechSynthesis.getVoices();
-        
-        // Pancing voices jika array masih kosong (Bug di beberapa versi Chrome/Edge)
-        if (voices.length === 0) {
-            voices = window.speechSynthesis.getVoices();
-        }
-        
-        // Kumpulkan semua suara Bahasa Indonesia, dan BUANG yang terdeteksi sebagai cowok
-        const idVoices = voices.filter(v => 
-            v.lang.includes('id') && 
-            !v.name.toLowerCase().match(/(ardi|andika|budi|male|cowok)/)
-        );
-
-        // 1. Cari Google (Pasti cewek natural)
-        let voice = idVoices.find(v => v.name.toLowerCase().includes('google'));
-        
-        // 2. Kalau Google gak ada, cari Gadis/Ayu (Microsoft cewek)
-        if (!voice) {
-            voice = idVoices.find(v => v.name.toLowerCase().match(/(gadis|ayu|female|cewek)/));
-        }
-
-        // 3. Kalau gak ada juga, ambil aja suara Indo pertama yang tersisa (karena cowok udah dibuang di atas)
-        if (!voice && idVoices.length > 0) {
-            voice = idVoices[0];
-        }
-
-        const utterance = new SpeechSynthesisUtterance(text);
-        utterance.lang = 'id-ID';
-        if (voice) {
-            utterance.voice = voice;
-        }
-        utterance.rate = 0.85;
-        utterance.pitch = 1;
-        utterance.volume = 1;
-
-        setTimeout(() => {
-            synth.speak(utterance);
-        }, 100);
+    const playAudio = (type: 'success' | 'already') => {
+        const file = type === 'success' ? '/audio/hadir.mp3' : '/audio/sudahtercatat.mp3';
+        const audio = new Audio(file);
+        audio.play().catch(e => console.warn('Audio play failed:', e));
     };
 
     const processQRAttendance = (qrToken: string) => {
@@ -138,12 +98,11 @@ export default function QRScannerPage() {
                     const firstName = user.name.split(' ')[0];
                     const isAlready = data.message?.includes('already');
                     
-                    // Mainkan suara presensi
+                    // Mainkan suara presensi (File MP3 Statis dari User)
                     if (!isAlready) {
-                        const audio = new Audio('/audio/berhasil.mp3');
-                        audio.play().catch(e => console.warn('Audio play failed:', e));
+                        playAudio('success');
                     } else {
-                        speak(`${firstName} sudah absen hari ini`);
+                        playAudio('already');
                     }
                     
                     setLogs(prev => {
@@ -187,7 +146,12 @@ export default function QRScannerPage() {
 
     const unlockAudio = () => {
         inputRef.current?.focus();
-        speak(''); // Play silent utterance to unlock SpeechSynthesis on mobile/Chrome
+        
+        // Pancing Audio Context di browser dengan memutar lalu memberhentikan
+        const a1 = new Audio('/audio/hadir.mp3');
+        const a2 = new Audio('/audio/sudahtercatat.mp3');
+        a1.play().then(() => a1.pause()).catch(() => {});
+        a2.play().then(() => a2.pause()).catch(() => {});
     };
 
     return (
