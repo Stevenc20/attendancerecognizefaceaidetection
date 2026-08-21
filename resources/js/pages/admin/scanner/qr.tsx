@@ -17,10 +17,6 @@ interface LogEntry {
     count?: number;
 }
 
-// Buat Audio object di luar component agar persisten dan bisa di-unlock oleh browser
-const audioSuccess = typeof window !== 'undefined' ? new Audio('/audio/hadir.mp3') : null;
-const audioAlready = typeof window !== 'undefined' ? new Audio('/audio/sudahtercatat.mp3') : null;
-
 export default function QRScannerPage() {
     const [currentTime, setCurrentTime] = useState(new Date());
     const [logs, setLogs] = useState<LogEntry[]>([]);
@@ -29,6 +25,21 @@ export default function QRScannerPage() {
     const [inputValue, setInputValue] = useState('');
     const inputRef = useRef<HTMLInputElement>(null);
     const processingRef = useRef<boolean>(false);
+    
+    const audioSuccessRef = useRef<HTMLAudioElement>(null);
+    const audioAlreadyRef = useRef<HTMLAudioElement>(null);
+
+    const playAudio = (type: 'success' | 'already') => {
+        try {
+            const audioEl = type === 'success' ? audioSuccessRef.current : audioAlreadyRef.current;
+            if (audioEl) {
+                audioEl.currentTime = 0;
+                audioEl.play().catch(e => console.error("Audio DOM play failed:", e));
+            }
+        } catch (error) {
+            console.error("Audio trigger error:", error);
+        }
+    };
 
     // Live clock timer
     useEffect(() => {
@@ -154,13 +165,21 @@ export default function QRScannerPage() {
         inputRef.current?.focus();
         
         // Pancing Audio Context di browser dengan memutar lalu memberhentikan
-        if (audioSuccess) audioSuccess.play().then(() => audioSuccess.pause()).catch(() => {});
-        if (audioAlready) audioAlready.play().then(() => audioAlready.pause()).catch(() => {});
+        if (audioSuccessRef.current) {
+            audioSuccessRef.current.play().then(() => audioSuccessRef.current?.pause()).catch(() => {});
+        }
+        if (audioAlreadyRef.current) {
+            audioAlreadyRef.current.play().then(() => audioAlreadyRef.current?.pause()).catch(() => {});
+        }
     };
 
     return (
         <div className="min-h-screen bg-gray-50 flex">
             <Head title="QR Scanner — SMKN 40" />
+            
+            {/* DOM Audio Elements for reliable playback */}
+            <audio ref={audioSuccessRef} src="/audio/hadir.mp3" preload="auto" />
+            <audio ref={audioAlreadyRef} src="/audio/sudahtercatat.mp3" preload="auto" />
             
             {/* Left Side: Status / Scanner */}
             <div className="flex-1 flex flex-col p-8 items-center justify-center relative" onClick={unlockAudio}>

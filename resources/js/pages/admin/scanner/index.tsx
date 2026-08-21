@@ -21,10 +21,6 @@ const parseJsonResponse = async (response: Response): Promise<unknown> => {
     }
 };
 
-// Buat Audio object di luar component agar persisten dan bisa di-unlock oleh browser
-const audioSuccess = typeof window !== 'undefined' ? new Audio('/audio/hadir.mp3') : null;
-const audioAlready = typeof window !== 'undefined' ? new Audio('/audio/sudahtercatat.mp3') : null;
-
 // Type definitions
 type FaceEmbedding = {
     id: number;
@@ -98,6 +94,9 @@ export default function FaceScanner() {
     const staticFramesRef = useRef<{ [key: string]: number }>({});
     const lastAlertTimeRef = useRef<{ [key: string]: number }>({});
     const lastRecognizedRef = useRef<{ [key: number]: number }>({});
+    
+    const audioSuccessRef = useRef<HTMLAudioElement>(null);
+    const audioAlreadyRef = useRef<HTMLAudioElement>(null);
     const trackersRef = useRef<{ [trackId: number]: TrackData }>({});
     const nextTrackIdRef = useRef<number>(1);
     
@@ -652,10 +651,14 @@ export default function FaceScanner() {
             const isAlready = data.message?.includes('already');
             
             // Play persistent audio
-            const audio = isAlready ? audioAlready : audioSuccess;
-            if (audio) {
-                audio.currentTime = 0;
-                audio.play().catch(e => console.warn('Audio play failed:', e));
+            try {
+                const audioEl = isAlready ? audioAlreadyRef.current : audioSuccessRef.current;
+                if (audioEl) {
+                    audioEl.currentTime = 0;
+                    audioEl.play().catch(e => console.error("Audio DOM play failed:", e));
+                }
+            } catch (error) {
+                console.error("Audio trigger error:", error);
             }
 
             if (isAlready) {
@@ -690,6 +693,10 @@ export default function FaceScanner() {
     return (
         <div className={`${theme === 'dark' ? 'bg-[#080B1A] text-white' : 'bg-gray-100 text-gray-900'} min-h-screen font-sans overflow-hidden flex flex-col transition-colors duration-300`}>
             <Head title="Live Scanner - SMKN 40" />
+
+            {/* DOM Audio Elements for reliable playback */}
+            <audio ref={audioSuccessRef} src="/audio/hadir.mp3" preload="auto" />
+            <audio ref={audioAlreadyRef} src="/audio/sudahtercatat.mp3" preload="auto" />
 
             {/* Topbar */}
             <header className={`px-6 py-4 flex justify-between items-center z-50 border-b relative transition-colors duration-300 ${theme === 'dark' ? 'bg-black/30 backdrop-blur-md border-white/10' : 'bg-white shadow-sm border-gray-200'}`}>
