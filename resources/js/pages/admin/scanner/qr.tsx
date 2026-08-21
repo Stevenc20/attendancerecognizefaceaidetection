@@ -166,7 +166,7 @@ export default function QRScannerPage() {
             
             {/* Left Side: Status / Scanner */}
             <div className="flex-1 flex flex-col p-8 items-center justify-center relative" onClick={unlockAudio}>
-                <Link href="/admin/dashboard" className="absolute top-8 left-8 text-gray-500 hover:text-gray-900 font-medium">
+                <Link href="/dashboard" className="absolute top-8 left-8 text-gray-500 hover:text-gray-900 font-medium">
                     &larr; Back to Dashboard
                 </Link>
 

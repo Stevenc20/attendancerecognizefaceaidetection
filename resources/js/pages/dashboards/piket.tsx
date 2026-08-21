@@ -149,30 +149,47 @@ export default function PiketDashboard({ stats, classrooms, alerts }: PiketProps
                             <div className="p-3 bg-gray-50 border-b border-gray-100 text-xs font-semibold text-gray-500 uppercase tracking-wider text-center">
                                 Daftar Siswa Belum Hadir / Alpha
                             </div>
-                            <div className="overflow-y-auto p-4 space-y-3 flex-1 custom-scrollbar">
-                                {alerts.filter(a => a.status === 'Belum Hadir' || a.status === 'Alpha').length === 0 ? (
-                                    <div className="text-center text-gray-400 py-10 flex flex-col items-center">
-                                        <UserCheck size={32} className="mb-2 text-emerald-300" />
-                                        <p>Semua siswa sudah masuk.</p>
-                                    </div>
-                                ) : (
-                                    alerts.filter(a => a.status === 'Belum Hadir' || a.status === 'Alpha').map((alert, idx) => (
-                                        <div key={idx} className="flex gap-3 p-3 rounded-lg border border-red-100 bg-red-50/50 hover:bg-red-50 transition-colors">
-                                            <div className="mt-0.5 text-[#D40000]">
-                                                <UserMinus size={16} />
+                            <div className="overflow-y-auto p-4 space-y-4 flex-1 custom-scrollbar">
+                                {(() => {
+                                    const absentAlerts = alerts.filter(a => a.status === 'Belum Hadir' || a.status === 'Alpha');
+                                    
+                                    if (absentAlerts.length === 0) {
+                                        return (
+                                            <div className="text-center text-gray-400 py-10 flex flex-col items-center">
+                                                <UserCheck size={32} className="mb-2 text-emerald-300" />
+                                                <p>Semua siswa sudah masuk.</p>
                                             </div>
-                                            <div>
-                                                <div className="font-bold text-sm text-gray-900">{alert.student_name}</div>
-                                                <div className="text-xs text-gray-600 mt-0.5">
-                                                    Kelas <span className="font-semibold">{alert.classroom}</span>
-                                                </div>
-                                                <div className="text-[10px] text-gray-500 mt-1">
-                                                    Wali: {alert.teacher}
-                                                </div>
+                                        );
+                                    }
+
+                                    const grouped = absentAlerts.reduce((acc, alert) => {
+                                        if (!acc[alert.classroom]) {
+                                            acc[alert.classroom] = {
+                                                teacher: alert.teacher,
+                                                students: []
+                                            };
+                                        }
+                                        acc[alert.classroom].students.push(alert.student_name);
+                                        return acc;
+                                    }, {} as Record<string, { teacher: string, students: string[] }>);
+
+                                    return Object.entries(grouped).map(([classroom, data], idx) => (
+                                        <div key={idx} className="rounded-lg border border-red-100 bg-red-50/30 overflow-hidden">
+                                            <div className="p-3 bg-red-50 border-b border-red-100">
+                                                <div className="font-bold text-sm text-[#D40000]">{classroom}</div>
+                                                <div className="text-[10px] text-gray-600 font-medium">Wali: {data.teacher}</div>
                                             </div>
+                                            <ul className="p-3 space-y-2">
+                                                {data.students.map((student, sIdx) => (
+                                                    <li key={sIdx} className="flex items-start gap-2 text-sm text-gray-800">
+                                                        <UserMinus size={14} className="mt-0.5 text-red-400 shrink-0" />
+                                                        <span className="font-medium">{student}</span>
+                                                    </li>
+                                                ))}
+                                            </ul>
                                         </div>
-                                    ))
-                                )}
+                                    ));
+                                })()}
                             </div>
                         </div>
                     </div>

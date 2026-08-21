@@ -729,7 +729,7 @@ export default function FaceScanner() {
                     >
                         <Maximize size={18} />
                     </button>
-                    <Link href="/admin/dashboard" className="p-2 bg-red-500/20 text-red-500 hover:bg-red-500 hover:text-white rounded-full transition-colors">
+                    <Link href="/dashboard" className="p-2 bg-red-500/20 text-red-500 hover:bg-red-500 hover:text-white rounded-full transition-colors">
                         <XCircle size={18} />
                     </Link>
                 </div>
