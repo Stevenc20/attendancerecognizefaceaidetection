@@ -36,6 +36,7 @@ class LoginResponse implements LoginResponseContract
             User::ROLE_ADMIN => 'admin.dashboard',
             User::ROLE_TEACHER => 'teacher.dashboard',
             User::ROLE_STUDENT => 'student.dashboard',
+            User::ROLE_PIKET => 'piket.dashboard',
             default => 'dashboard',
         };
 

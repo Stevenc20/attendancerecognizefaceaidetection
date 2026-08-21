@@ -91,6 +91,7 @@ Route::middleware(['auth', 'verified', CheckActivation::class])->group(function 
             'admin' => redirect()->route('admin.dashboard'),
             'teacher' => redirect()->route('teacher.dashboard'),
             'student' => redirect()->route('student.dashboard'),
+            'piket' => redirect()->route('piket.dashboard'),
             default => abort(403),
         };
     })->name('dashboard');
