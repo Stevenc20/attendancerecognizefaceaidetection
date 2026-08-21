@@ -21,6 +21,10 @@ const parseJsonResponse = async (response: Response): Promise<unknown> => {
     }
 };
 
+// Buat Audio object di luar component agar persisten dan bisa di-unlock oleh browser
+const audioSuccess = typeof window !== 'undefined' ? new Audio('/audio/hadir.mp3') : null;
+const audioAlready = typeof window !== 'undefined' ? new Audio('/audio/sudahtercatat.mp3') : null;
+
 // Type definitions
 type FaceEmbedding = {
     id: number;
@@ -647,10 +651,12 @@ export default function FaceScanner() {
         .then(data => {
             const isAlready = data.message?.includes('already');
             
-            // Play audio based on response
-            const audioPath = isAlready ? '/audio/sudahtercatat.mp3' : '/audio/hadir.mp3';
-            const audio = new Audio(audioPath);
-            audio.play().catch(e => console.warn('Audio play failed:', e));
+            // Play persistent audio
+            const audio = isAlready ? audioAlready : audioSuccess;
+            if (audio) {
+                audio.currentTime = 0;
+                audio.play().catch(e => console.warn('Audio play failed:', e));
+            }
 
             if (isAlready) {
                 alreadyPresentUsersRef.current.add(user.id);

@@ -17,6 +17,10 @@ interface LogEntry {
     count?: number;
 }
 
+// Buat Audio object di luar component agar persisten dan bisa di-unlock oleh browser
+const audioSuccess = typeof window !== 'undefined' ? new Audio('/audio/hadir.mp3') : null;
+const audioAlready = typeof window !== 'undefined' ? new Audio('/audio/sudahtercatat.mp3') : null;
+
 export default function QRScannerPage() {
     const [currentTime, setCurrentTime] = useState(new Date());
     const [logs, setLogs] = useState<LogEntry[]>([]);
@@ -69,9 +73,11 @@ export default function QRScannerPage() {
     };
 
     const playAudio = (type: 'success' | 'already') => {
-        const file = type === 'success' ? '/audio/hadir.mp3' : '/audio/sudahtercatat.mp3';
-        const audio = new Audio(file);
-        audio.play().catch(e => console.warn('Audio play failed:', e));
+        const audio = type === 'success' ? audioSuccess : audioAlready;
+        if (audio) {
+            audio.currentTime = 0;
+            audio.play().catch(e => console.warn('Audio play failed:', e));
+        }
     };
 
     const processQRAttendance = (qrToken: string) => {
@@ -148,10 +154,8 @@ export default function QRScannerPage() {
         inputRef.current?.focus();
         
         // Pancing Audio Context di browser dengan memutar lalu memberhentikan
-        const a1 = new Audio('/audio/hadir.mp3');
-        const a2 = new Audio('/audio/sudahtercatat.mp3');
-        a1.play().then(() => a1.pause()).catch(() => {});
-        a2.play().then(() => a2.pause()).catch(() => {});
+        if (audioSuccess) audioSuccess.play().then(() => audioSuccess.pause()).catch(() => {});
+        if (audioAlready) audioAlready.play().then(() => audioAlready.pause()).catch(() => {});
     };
 
     return (
