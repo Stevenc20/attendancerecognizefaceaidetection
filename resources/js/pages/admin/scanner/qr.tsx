@@ -83,14 +83,6 @@ export default function QRScannerPage() {
         setInputValue('');
     };
 
-    const playAudio = (type: 'success' | 'already') => {
-        const audio = type === 'success' ? audioSuccess : audioAlready;
-        if (audio) {
-            audio.currentTime = 0;
-            audio.play().catch(e => console.warn('Audio play failed:', e));
-        }
-    };
-
     const processQRAttendance = (qrToken: string) => {
         if (processingRef.current) return;
         processingRef.current = true;
