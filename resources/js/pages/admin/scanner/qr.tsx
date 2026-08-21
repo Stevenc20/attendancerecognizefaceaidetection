@@ -74,16 +74,31 @@ export default function QRScannerPage() {
         const synth = window.speechSynthesis;
         synth.cancel();
 
-        const voices = window.speechSynthesis.getVoices();
+        let voices = window.speechSynthesis.getVoices();
         
-        // 1. Prioritas Google (pasti cewek)
-        // 2. Prioritas Gadis / Ayu (nama cewek Microsoft)
-        // 3. Hindari Ardi / Andika (nama cowok)
-        const voice = 
-            voices.find(v => v.lang.includes('id') && v.name.toLowerCase().includes('google')) ||
-            voices.find(v => v.lang.includes('id') && (v.name.toLowerCase().includes('gadis') || v.name.toLowerCase().includes('ayu'))) ||
-            voices.find(v => v.lang.includes('id') && !v.name.toLowerCase().includes('ardi') && !v.name.toLowerCase().includes('andika')) ||
-            voices.find(v => v.lang.includes('id'));
+        // Pancing voices jika array masih kosong (Bug di beberapa versi Chrome/Edge)
+        if (voices.length === 0) {
+            voices = window.speechSynthesis.getVoices();
+        }
+        
+        // Kumpulkan semua suara Bahasa Indonesia, dan BUANG yang terdeteksi sebagai cowok
+        const idVoices = voices.filter(v => 
+            v.lang.includes('id') && 
+            !v.name.toLowerCase().match(/(ardi|andika|budi|male|cowok)/)
+        );
+
+        // 1. Cari Google (Pasti cewek natural)
+        let voice = idVoices.find(v => v.name.toLowerCase().includes('google'));
+        
+        // 2. Kalau Google gak ada, cari Gadis/Ayu (Microsoft cewek)
+        if (!voice) {
+            voice = idVoices.find(v => v.name.toLowerCase().match(/(gadis|ayu|female|cewek)/));
+        }
+
+        // 3. Kalau gak ada juga, ambil aja suara Indo pertama yang tersisa (karena cowok udah dibuang di atas)
+        if (!voice && idVoices.length > 0) {
+            voice = idVoices[0];
+        }
 
         const utterance = new SpeechSynthesisUtterance(text);
         utterance.lang = 'id-ID';
