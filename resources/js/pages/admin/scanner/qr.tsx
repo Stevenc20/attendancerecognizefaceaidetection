@@ -42,24 +42,32 @@ export default function QRScannerPage() {
         }
     };
 
-    const speakName = (name: string) => {
-        if (!('speechSynthesis' in window)) return;
+    const speakNameThenAudio = (name: string, type: 'success' | 'already') => {
+        if (!('speechSynthesis' in window)) {
+            playAudio(type);
+            return;
+        }
         window.speechSynthesis.cancel(); // Stop current speech
         
         const utterance = new SpeechSynthesisUtterance(name);
         utterance.lang = 'id-ID';
-        utterance.rate = 0.9; // Agak diperlambat dikit biar gak cadel
+        utterance.rate = 0.9;
         
-        // Cari suara Google Bahasa Indonesia yang resmi (biasanya paling jernih)
         const voices = window.speechSynthesis.getVoices();
-        const googleVoice = voices.find(v => v.name.includes('Google') && v.lang.includes('id'));
+        // Pakai suara default Indonesian aja biar gak terlalu spesifik dan berisiko cadel
         const idVoices = voices.filter(v => v.lang.includes('id') || v.lang.includes('ID'));
         
-        if (googleVoice) {
-            utterance.voice = googleVoice;
-        } else if (idVoices.length > 0) {
-            utterance.voice = idVoices[0];
+        if (idVoices.length > 0) {
+            // Sebisa mungkin ambil voice bawaan OS yang paling natural
+            utterance.voice = idVoices.find(v => v.name.includes('Natural') || v.name.includes('Online')) || idVoices[0];
         }
+
+        utterance.onend = () => {
+            playAudio(type);
+        };
+        utterance.onerror = () => {
+            playAudio(type);
+        };
 
         window.speechSynthesis.speak(utterance);
     };
@@ -137,15 +145,10 @@ export default function QRScannerPage() {
                     const firstName = user.name.split(' ')[0];
                     const isAlready = data.message?.includes('already');
                     
-                    // Mainkan suara presensi (File MP3 Statis dari User)
                     if (!isAlready) {
-                        playAudio('success');
-                        // Delay 1.5 detik biar gak nabrak MP3
-                        setTimeout(() => speakName(firstName), 1500);
+                        speakNameThenAudio(firstName, 'success');
                     } else {
-                        playAudio('already');
-                        // MP3 sudah tercatat lebih panjang, delay 3 detik
-                        setTimeout(() => speakName(firstName), 3000);
+                        speakNameThenAudio(firstName, 'already');
                     }
                     
                     setLogs(prev => {

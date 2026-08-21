@@ -226,8 +226,11 @@ export default function FaceScanner() {
         }
     };
 
-    const speakName = (name: string) => {
-        if (!('speechSynthesis' in window)) return;
+    const speakNameThenAudio = (name: string, type: 'success' | 'already') => {
+        if (!('speechSynthesis' in window)) {
+            playAudio(type);
+            return;
+        }
         window.speechSynthesis.cancel();
         
         const utterance = new SpeechSynthesisUtterance(name);
@@ -235,14 +238,18 @@ export default function FaceScanner() {
         utterance.rate = 0.9;
         
         const voices = window.speechSynthesis.getVoices();
-        const googleVoice = voices.find(v => v.name.includes('Google') && v.lang.includes('id'));
         const idVoices = voices.filter(v => v.lang.includes('id') || v.lang.includes('ID'));
         
-        if (googleVoice) {
-            utterance.voice = googleVoice;
-        } else if (idVoices.length > 0) {
-            utterance.voice = idVoices[0];
+        if (idVoices.length > 0) {
+            utterance.voice = idVoices.find(v => v.name.includes('Natural') || v.name.includes('Online')) || idVoices[0];
         }
+
+        utterance.onend = () => {
+            playAudio(type);
+        };
+        utterance.onerror = () => {
+            playAudio(type);
+        };
 
         window.speechSynthesis.speak(utterance);
     };
@@ -684,13 +691,10 @@ export default function FaceScanner() {
             const isAlready = data.message?.includes('already');
             const firstName = user.name.split(' ')[0];
             
-            // Play persistent audio
             if (!isAlready) {
-                playAudio('success');
-                setTimeout(() => speakName(firstName), 1500);
+                speakNameThenAudio(firstName, 'success');
             } else {
-                playAudio('already');
-                setTimeout(() => speakName(firstName), 3000);
+                speakNameThenAudio(firstName, 'already');
             }
 
             if (isAlready) {
