@@ -688,7 +688,7 @@ export default function FaceScanner() {
                         <Camera size={20} />
                     </div>
                     <div>
-                        <h1 className="text-lg font-bold tracking-tight">SMKN 40 LIVE SCANNER</h1>
+                        <h1 className="text-lg font-bold tracking-tight">SMKN 40 LIVE SCANNER <span className="text-xs font-normal ml-2 opacity-70">| Created by Steven Christian</span></h1>
                         <div className={`text-xs uppercase tracking-widest flex items-center gap-2 ${theme === 'dark' ? 'text-white/50' : 'text-gray-500'}`}>
                             <span>{currentTime.toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span>
                             <span>•</span>

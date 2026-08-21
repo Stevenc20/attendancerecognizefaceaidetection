@@ -169,6 +169,9 @@ export default function QRScannerPage() {
                 <Link href="/dashboard" className="absolute top-8 left-8 text-gray-500 hover:text-gray-900 font-medium">
                     &larr; Back to Dashboard
                 </Link>
+                <div className="absolute bottom-6 left-8 text-xs font-medium text-gray-400">
+                    Created by Steven Christian
+                </div>
 
                 <div className="text-center mb-12">
                     <div className="flex items-center justify-center gap-3 mb-4">
