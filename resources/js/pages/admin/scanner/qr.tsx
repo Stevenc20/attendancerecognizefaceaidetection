@@ -48,15 +48,17 @@ export default function QRScannerPage() {
         
         const utterance = new SpeechSynthesisUtterance(name);
         utterance.lang = 'id-ID';
-        utterance.rate = 1.0;
+        utterance.rate = 0.9; // Agak diperlambat dikit biar gak cadel
         
-        // Try to pick a good Indonesian voice
+        // Cari suara Google Bahasa Indonesia yang resmi (biasanya paling jernih)
         const voices = window.speechSynthesis.getVoices();
+        const googleVoice = voices.find(v => v.name.includes('Google') && v.lang.includes('id'));
         const idVoices = voices.filter(v => v.lang.includes('id') || v.lang.includes('ID'));
-        const preferredVoice = idVoices.find(v => v.name.toLowerCase().includes('female') || v.name.toLowerCase().includes('perempuan')) || idVoices[0];
         
-        if (preferredVoice) {
-            utterance.voice = preferredVoice;
+        if (googleVoice) {
+            utterance.voice = googleVoice;
+        } else if (idVoices.length > 0) {
+            utterance.voice = idVoices[0];
         }
 
         window.speechSynthesis.speak(utterance);
@@ -138,12 +140,13 @@ export default function QRScannerPage() {
                     // Mainkan suara presensi (File MP3 Statis dari User)
                     if (!isAlready) {
                         playAudio('success');
+                        // Delay 1.5 detik biar gak nabrak MP3
+                        setTimeout(() => speakName(firstName), 1500);
                     } else {
                         playAudio('already');
+                        // MP3 sudah tercatat lebih panjang, delay 3 detik
+                        setTimeout(() => speakName(firstName), 3000);
                     }
-
-                    // Sebutkan nama panggilannya 0.5 detik setelah MP3 jalan
-                    setTimeout(() => speakName(firstName), 500);
                     
                     setLogs(prev => {
                         const existing = prev.find(l => l.user.id === user.id);

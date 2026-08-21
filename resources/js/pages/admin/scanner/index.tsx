@@ -232,14 +232,16 @@ export default function FaceScanner() {
         
         const utterance = new SpeechSynthesisUtterance(name);
         utterance.lang = 'id-ID';
-        utterance.rate = 1.0;
+        utterance.rate = 0.9;
         
         const voices = window.speechSynthesis.getVoices();
+        const googleVoice = voices.find(v => v.name.includes('Google') && v.lang.includes('id'));
         const idVoices = voices.filter(v => v.lang.includes('id') || v.lang.includes('ID'));
-        const preferredVoice = idVoices.find(v => v.name.toLowerCase().includes('female') || v.name.toLowerCase().includes('perempuan')) || idVoices[0];
         
-        if (preferredVoice) {
-            utterance.voice = preferredVoice;
+        if (googleVoice) {
+            utterance.voice = googleVoice;
+        } else if (idVoices.length > 0) {
+            utterance.voice = idVoices[0];
         }
 
         window.speechSynthesis.speak(utterance);
@@ -685,12 +687,11 @@ export default function FaceScanner() {
             // Play persistent audio
             if (!isAlready) {
                 playAudio('success');
+                setTimeout(() => speakName(firstName), 1500);
             } else {
                 playAudio('already');
+                setTimeout(() => speakName(firstName), 3000);
             }
-
-            // Sebutkan nama panggilannya 0.5 detik setelah MP3 jalan
-            setTimeout(() => speakName(firstName), 500);
 
             if (isAlready) {
                 alreadyPresentUsersRef.current.add(user.id);
