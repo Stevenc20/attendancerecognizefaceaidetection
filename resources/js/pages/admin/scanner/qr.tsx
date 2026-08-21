@@ -111,7 +111,7 @@ export default function QRScannerPage() {
                     
                     // Improved Indonesian TTS
                     if (!isAlready) {
-                        speak(`${firstName} berhasil absen`);
+                        speak(`${firstName} berhasil`);
                     } else {
                         speak(`${firstName} sudah absen hari ini`);
                     }
