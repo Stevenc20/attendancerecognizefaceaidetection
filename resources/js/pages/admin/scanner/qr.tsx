@@ -74,8 +74,20 @@ export default function QRScannerPage() {
         const synth = window.speechSynthesis;
         synth.cancel();
 
+        const voices = window.speechSynthesis.getVoices();
+        
+        // Prioritaskan suara perempuan Google atau Microsoft Gadis (Natural)
+        const voice = 
+            voices.find(v => v.lang === 'id-ID' && v.name.toLowerCase().includes('google')) ||
+            voices.find(v => v.lang === 'id-ID' && v.name.toLowerCase().includes('gadis')) ||
+            voices.find(v => v.lang === 'id-ID') ||
+            voices.find(v => v.lang.startsWith('id'));
+
         const utterance = new SpeechSynthesisUtterance(text);
         utterance.lang = 'id-ID';
+        if (voice) {
+            utterance.voice = voice;
+        }
         utterance.rate = 0.85;
         utterance.pitch = 1;
         utterance.volume = 1;
