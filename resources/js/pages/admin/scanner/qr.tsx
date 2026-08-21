@@ -54,7 +54,7 @@ export default function QRScannerPage() {
                     processQRAttendance(token);
                 }
                 setInputValue('');
-            }, 100); // Wait 100ms after last character is typed
+            }, 400); // Wait 400ms after last character is typed to accommodate slow/laggy physical scanners
             return () => clearTimeout(timeout);
         }
     }, [inputValue]);
@@ -141,7 +141,7 @@ export default function QRScannerPage() {
                  const errorLog: LogEntry = {
                      id: Math.random().toString(36).substring(7),
                      time: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
-                     user: { id: 0, name: 'QR Tidak Valid' },
+                     user: { id: 0, name: data.received_token ? `Invalid: ${data.received_token.substring(0, 10)}...` : 'QR Tidak Valid' },
                      status: 'error',
                      message: 'Gagal Dikenali'
                  };

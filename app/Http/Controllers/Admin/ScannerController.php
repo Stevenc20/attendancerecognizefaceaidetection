@@ -36,11 +36,19 @@ class ScannerController extends Controller
 
     public function recordAttendance(Request $request)
     {
-        $request->validate([
+        $validator = \Illuminate\Support\Facades\Validator::make($request->all(), [
             'user_id' => 'required_without:qr_token|exists:users,id',
             'qr_token' => 'required_without:user_id|exists:users,qr_token',
             'method' => 'required|string',
         ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'message' => 'Invalid QR Code',
+                'errors' => $validator->errors(),
+                'received_token' => $request->qr_token
+            ], 422);
+        }
 
         $userId = $request->user_id;
         if ($request->qr_token) {
