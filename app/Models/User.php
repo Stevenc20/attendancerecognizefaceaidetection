@@ -77,4 +77,9 @@ class User extends Authenticatable implements PasskeyUser
     {
         return $this->belongsTo(Classroom::class);
     }
+
+    public function attendances()
+    {
+        return $this->hasMany(Attendance::class);
+    }
 }
